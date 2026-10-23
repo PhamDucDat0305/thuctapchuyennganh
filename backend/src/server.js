@@ -16,6 +16,21 @@ async function start() {
     return;
   }
 
+  try {
+    await app.locals.connectSessionStore();
+    console.log('[session] Đã kết nối SQL Server session store');
+  } catch (err) {
+    console.error('[session] Không kết nối được session store:', err.message);
+    try { await app.locals.closeSessionStore(); } catch (closeError) {
+      console.error('[session] Lỗi khi đóng session store:', closeError.message);
+    }
+    try { await closeDatabase(); } catch (closeError) {
+      console.error('[db] Lỗi khi đóng connection pool:', closeError.message);
+    }
+    process.exitCode = 1;
+    return;
+  }
+
   const server = app.listen(PORT, () => {
     console.log(`[server] Đang chạy tại http://localhost:${PORT}`);
   });

@@ -17,6 +17,8 @@ function createSessionMiddleware() {
   sessionStore = new MSSQLStore(buildConfig(), {
     table: '[dbo].[sessions]',
     ttl: SEVEN_DAYS_MS,
+    retries: 3,
+    retryDelay: 500,
   });
   sessionStore.on('error', (err) => {
     console.error('[session] Lỗi session store:', err.message);
@@ -37,6 +39,13 @@ function createSessionMiddleware() {
   });
 }
 
+async function connectSessionStore() {
+  if (!sessionStore) throw new Error('Session store chưa được khởi tạo');
+  if (!sessionStore.databaseConnection.connected) {
+    await sessionStore.initializeDatabase();
+  }
+}
+
 async function closeSessionStore() {
   const store = sessionStore;
   sessionStore = null;
@@ -45,4 +54,4 @@ async function closeSessionStore() {
   }
 }
 
-module.exports = { createSessionMiddleware, closeSessionStore, SESSION_COOKIE_NAME };
+module.exports = { createSessionMiddleware, connectSessionStore, closeSessionStore, SESSION_COOKIE_NAME };

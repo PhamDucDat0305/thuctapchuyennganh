@@ -3,9 +3,16 @@ const { sql, getPool } = require('../config/database');
 const authenticate = require('../middleware/authenticate');
 const requireRole = require('../middleware/requireRole');
 const asyncHandler = require('../utils/asyncHandler');
+const rateLimit = require('../middleware/rateLimit');
 
 const router = express.Router();
 router.use(authenticate, requireRole('candidate', 'employer', 'admin'));
+const limitApplications = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 10,
+  key: (req) => `user:${req.session?.userId || req.ip}`,
+  message: 'Bạn đã gửi quá nhiều đơn ứng tuyển trong thời gian ngắn. Vui lòng thử lại sau.',
+});
 
 const applicationSelect = `
   SELECT a.id, a.job_id AS jobId,
@@ -79,7 +86,7 @@ router.get('/job/:jobId', requireRole('employer', 'admin'), asyncHandler(async (
   return res.json(result.recordset);
 }));
 
-router.post('/', requireRole('candidate'), asyncHandler(async (req, res) => {
+router.post('/', requireRole('candidate'), limitApplications, asyncHandler(async (req, res) => {
   const body = req.body || {};
   const jobId = String(body.jobId || '');
   const cv = typeof body.cv === 'string' ? body.cv.trim() : '';

@@ -13,6 +13,9 @@ router.get('/', authenticate, (req, res) => {
 
 router.patch('/profile', authenticate, asyncHandler(async (req, res) => {
   const body = req.body || {};
+  if (Object.hasOwn(body, 'twoFactorEnabled')) {
+    return res.status(400).json({ error: 'Xác thực hai lớp chưa được hỗ trợ; không thể thay đổi cài đặt này' });
+  }
   const assignments = [];
   const profileAssignments = [];
   const request = getPool().request().input('id', sql.BigInt, req.user.id);
@@ -37,14 +40,10 @@ router.patch('/profile', authenticate, asyncHandler(async (req, res) => {
     assignments.push('phone = @phone');
   }
   if (Object.hasOwn(body, 'searchStatus')) {
+    if (req.user.role !== 'candidate') return res.status(403).json({ error: 'Chỉ ứng viên mới có cài đặt trạng thái tìm việc' });
     if (typeof body.searchStatus !== 'boolean') return res.status(400).json({ error: 'searchStatus phải là true hoặc false' });
     request.input('searchStatus', sql.Bit, body.searchStatus);
     assignments.push('search_status = @searchStatus');
-  }
-  if (Object.hasOwn(body, 'twoFactorEnabled')) {
-    if (typeof body.twoFactorEnabled !== 'boolean') return res.status(400).json({ error: 'twoFactorEnabled phải là true hoặc false' });
-    request.input('twoFactorEnabled', sql.Bit, body.twoFactorEnabled);
-    assignments.push('two_factor_enabled = @twoFactorEnabled');
   }
   if (['title', 'location', 'experience', 'skills'].some((key) => Object.hasOwn(body, key))) {
     if (req.user.role !== 'candidate') return res.status(403).json({ error: 'Chỉ ứng viên mới được cập nhật hồ sơ nghề nghiệp' });
@@ -84,7 +83,7 @@ router.patch('/profile', authenticate, asyncHandler(async (req, res) => {
     }
     const result = await getPool().request().input('id', sql.BigInt, req.user.id).query(`
       SELECT u.id, u.email, u.full_name AS fullName, u.role, u.phone,
-        u.search_status AS searchStatus, u.two_factor_enabled AS twoFactorEnabled,
+        u.search_status AS searchStatus,
         p.title, p.location, p.experience, p.skills
       FROM dbo.users AS u LEFT JOIN dbo.candidate_profiles AS p ON p.user_id = u.id
       WHERE u.id = @id`);

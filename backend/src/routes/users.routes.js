@@ -44,24 +44,28 @@ router.get('/:id', asyncHandler(async (req, res) => {
   if (!/^[1-9]\d*$/.test(req.params.id)) return res.status(400).json({ error: 'Mã người dùng không hợp lệ' });
   const result = await getPool().request()
     .input('id', sql.BigInt, req.params.id)
-    .input('requesterId', sql.BigInt, req.user.id).query(`
+    .input('requesterId', sql.BigInt, req.user.id)
+    .input('requesterRole', sql.NVarChar(20), req.user.role).query(`
+    DECLARE @isRelatedEmployer bit = CASE WHEN EXISTS (
+      SELECT 1 FROM dbo.applications AS a
+      INNER JOIN dbo.jobs AS j ON j.id = a.job_id
+      WHERE a.candidate_id = @id AND j.recruiter_id = @requesterId
+    ) THEN 1 ELSE 0 END;
     SELECT u.id,
-      CASE WHEN u.id = @requesterId OR EXISTS (
-        SELECT 1 FROM dbo.applications AS a
-        INNER JOIN dbo.jobs AS j ON j.id = a.job_id
-        WHERE a.candidate_id = u.id AND j.recruiter_id = @requesterId
-      ) THEN u.email ELSE NULL END AS email,
+      CASE WHEN u.id = @requesterId OR @requesterRole = N'admin' OR @isRelatedEmployer = 1 THEN u.email ELSE NULL END AS email,
       u.full_name AS fullName, u.role,
-      CASE WHEN u.id = @requesterId OR EXISTS (
-        SELECT 1 FROM dbo.applications AS a
-        INNER JOIN dbo.jobs AS j ON j.id = a.job_id
-        WHERE a.candidate_id = u.id AND j.recruiter_id = @requesterId
-      ) THEN u.phone ELSE NULL END AS phone,
-      u.search_status AS searchStatus, u.two_factor_enabled AS twoFactorEnabled,
+      CASE WHEN u.id = @requesterId OR @requesterRole = N'admin' OR @isRelatedEmployer = 1 THEN u.phone ELSE NULL END AS phone,
+      u.search_status AS searchStatus,
       p.title, p.location, p.experience, p.skills
     FROM dbo.users AS u
     LEFT JOIN dbo.candidate_profiles AS p ON p.user_id = u.id
-    WHERE u.id = @id AND u.status = N'active'`);
+    WHERE u.id = @id AND u.status = N'active'
+      AND (
+        u.id = @requesterId
+        OR @requesterRole = N'admin'
+        OR (u.role = N'candidate' AND @requesterRole = N'employer'
+          AND (u.search_status = 1 OR @isRelatedEmployer = 1))
+      )`);
   if (!result.recordset.length) return res.status(404).json({ error: 'Không tìm thấy người dùng' });
   return res.json(mapUser(result.recordset[0]));
 }));

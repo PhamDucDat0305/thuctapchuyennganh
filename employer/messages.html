@@ -123,6 +123,7 @@
       window.App.renderSidebar("employer", "messages");
 
       let activeContactId = new URLSearchParams(location.search).get("to");
+      const conversationContacts = new Map();
       let olderMessageCursor = null;
       let hasOlderMessages = false;
       let loadingOlderMessages = false;
@@ -163,6 +164,10 @@
       async function renderConversations() {
         const conversations = await window.DB.getConversations(user.id);
         const list = document.getElementById("convList");
+        conversationContacts.clear();
+        for (const conversation of conversations) {
+          if (conversation.contact) conversationContacts.set(String(conversation.contact.id), conversation.contact);
+        }
 
         if (!conversations.length) {
           list.innerHTML =
@@ -205,7 +210,7 @@
       async function renderChat() {
         if (!activeContactId) return;
 
-        const contact = await window.DB.getUserById(activeContactId);
+        const contact = conversationContacts.get(String(activeContactId)) || await window.DB.getUserById(activeContactId);
         if (!contact) return;
 
         const page = await window.DB.getMessages(user.id, activeContactId);

@@ -1,23 +1,23 @@
 # Lộ trình cải thiện
 
-Ưu tiên dựa trên source/log đã biết; chưa thay đổi code hay database trong audit.
+Ưu tiên dựa trên source/log đã biết. Các mục profile privacy, 2FA UI disable, Firebase removal, rate limiting, employer companyName và CV text label đã được sửa trong code; các mục còn lại chưa hoàn thành hoặc cần xác minh runtime/schema.
 
 ## P0 — Làm trước khi đưa lên môi trường dùng thật
 
 | Việc | Vấn đề gốc / lợi ích | Modules | Phụ thuộc/rủi ro | Xác minh |
 |---|---|---|---|---|
 | Xoay credentials đã dán trong trao đổi | Có khả năng credential DB/session bị lộ; giảm nguy cơ truy cập trái phép. | `.env` local, SQL login, deployment secrets | Cần cập nhật mọi môi trường, restart sessions có thể mất đăng nhập. | Xác nhận secret mới hoạt động, old SQL login/password vô hiệu; không ghi secret vào log/commit. |
-| Sửa quyền xem profile theo privacy | `GET /users/:id` bỏ qua `search_status`; bảo vệ ứng viên ẩn. | `users.routes.js`, profile UI | Cần quyết định employer đã có application/invite có được xem sau khi ẩn không. | Ma trận candidate/employer/admin × owner/hidden/discoverable/relationship. |
-| Gỡ Firebase auto migration hoặc đóng phạm vi migration | Có nhánh upload dữ liệu localStorage lên Firebase và xóa bản local. | `js/db.js`, `firebase-config.js`, HTML imports | Trước xóa phải tìm consumer `FirebaseFirestore` và quyết định dữ liệu local legacy cần giữ ở đâu. | DevTools Network không gọi Firebase; seed dữ liệu giả; không xóa local user data. |
+| **Đã sửa trong code:** quyền xem profile theo privacy | `GET /users/:id` áp dụng self/admin/employer visibility và relationship. | `users.routes.js`, profile UI | Policy hiện cho employer đã ứng tuyển xem profile ẩn; invite chưa được tính là quan hệ. | Còn cần xác minh ma trận candidate/employer/admin trên staging. |
+| **Đã sửa trong code:** gỡ Firebase auto migration | Client không còn upload dữ liệu localStorage lên Firebase hoặc xóa key local. | `js/db.js`; `firebase-config.js` đã xóa | Dữ liệu localStorage cũ được giữ nguyên; migration sang SQL nếu cần phải có thao tác riêng. | Kiểm tra DevTools Network không có request Firebase/CDN liên quan. |
 
 ## P1 — Tính đúng và giảm rủi ro nghiệp vụ
 
 | Việc | Vấn đề gốc / lợi ích | Modules | Phụ thuộc/rủi ro | Xác minh |
 |---|---|---|---|---|
-| Tạm bỏ UI 2FA hoặc triển khai MFA thật | Cờ hiện không đổi luồng login; tránh cảm giác an toàn giả. | `security.html`, `me.routes.js`, `auth.routes.js`, schema mới nếu cần | Cần chọn TOTP/email factor, recovery, lockout; không nên chỉ thêm OTP demo. | Login thực sự yêu cầu factor khi bật; recovery/disable có kiểm soát; test session. |
+| **Đã sửa một phần:** tắt UI 2FA giả | UI ghi chưa khả dụng; API từ chối đổi cờ. MFA thật chưa có. | `security.html`, `me.routes.js` | Cần chọn TOTP/email factor, recovery và lockout khi bắt đầu triển khai MFA. | Chỉ xác nhận hoàn tất khi login yêu cầu factor thật. |
 | Định nghĩa baseline SQL Server và migration có phiên bản | Thiếu DDL core, migrations không xác nhận đầy đủ existing schema. | `backend/sql`, runbook | Cần xuất/đối chiếu schema thật; migration có thể tác động dữ liệu hiện hữu. | Tạo DB disposable từ đầu và nâng cấp bản sao legacy; schema assertions pass. |
-| Thêm rate limiting, security headers, CSRF/deployment config | Không có throttling/Helmet/CSRF; cookie session. | `app.js`, auth routes, deploy config | Cần origin/domain/reverse proxy thật; không khóa người dùng NAT quá mạnh. | Automated tests cho 429/CORS/CSRF/cookie flags; headers scan staging. |
-| Chuẩn hóa employer company registration | Form gán tên company giả từ fullName. | `auth.html`, `js/auth.js`, `auth.routes.js` | Có thể ảnh hưởng form hiện tại/user onboarding. | Employer khai companyName thật hoặc hoàn tất bước profile setup. |
+| **Đã thêm rate limits cơ bản:** hoàn thiện deployment controls | Giới hạn hiện tại nằm trong process; chưa có Helmet/security headers/CSRF. | `app.js`, middleware rateLimit, reverse proxy/deploy config | Cần domain/origin/reverse proxy thật; nhiều instance cần shared store. | Kiểm tra 429/CORS/CSRF/cookie flags và headers trên staging. |
+| **Đã sửa trong code:** employer khai tên công ty thật | Form đăng ký employer có trường companyName bắt buộc theo role. | `auth.html`, `js/auth.js`, `auth.routes.js` | Cần xác nhận registration lưu đúng `dbo.companies.name`. | Tạo employer test rồi xem record company. |
 
 ## P2 — Khả năng bảo trì và hiệu năng
 

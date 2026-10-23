@@ -9,15 +9,15 @@
 - Password hash/verify bằng Argon2 trong `auth.routes.js`; có dummy hash để giảm chênh lệch timing khi email không tồn tại.
 - Session ID được regenerate khi login/register; session lưu qua `connect-mssql-v2`; cookie `httpOnly`, `sameSite=lax`, `secure` khi `NODE_ENV=production`; TTL 7 ngày.
 - Middleware đối chiếu user và trạng thái active từ DB mỗi request.
-- Không thấy rate limiter, lockout/backoff, MFA challenge, password reset, email verification hoặc đăng nhập lịch sử.
+- Đã thêm rate limit in-memory cho login/register, ứng tuyển, gửi tin nhắn/lời mời và job views; chưa có shared store, lockout theo tài khoản, MFA challenge, password reset, email verification hoặc lịch sử đăng nhập thật.
 - Đổi password không chủ động hủy các session còn lại của user.
 - Logout route không yêu cầu authenticate; hủy session nếu có và clear cookie, phù hợp endpoint logout idempotent.
 
 ## Authorization/BOLA/IDOR
 
 - Nhiều route kiểm tra role và ownership bằng `candidate_id`/`recruiter_id` trong SQL.
-- **Lỗ hổng privacy cần ưu tiên:** `GET /api/users/:id` không kiểm tra `search_status` và trả thông tin profile cơ bản cho user đăng nhập bất kỳ. Đánh giá chi tiết ISSUE-001.
-- Candidate discovery list lọc `search_status=1`, nhưng endpoint detail có thể bỏ qua chính sách đó.
+- `GET /api/users/:id` nay giới hạn quyền theo self/admin hoặc employer và candidate discoverability/quan hệ ứng tuyển; cần xác minh role matrix trong SQL Server staging (ISSUE-001).
+- Candidate discovery list và chi tiết đều cần đảm bảo `search_status=1` với employer chưa có quan hệ.
 - Message API cho phép gửi tới mọi account active candidate/employer, không yêu cầu đã có application/invite/relationship. Có thể là thiết kế sản phẩm, nhưng tăng spam/abuse; xác nhận policy.
 - Employer mời candidate cũng kiểm tra active role nhưng không yêu cầu search_status=1.
 
@@ -40,13 +40,13 @@
 
 - `backend/.env` tồn tại nhưng bị ignore; audit không đọc giá trị. `.env.example` dùng placeholders.
 - Trong trao đổi trước, người dùng đã dán giá trị có dạng credentials thật cho DB và `SESSION_SECRET`; tài liệu này không lặp lại giá trị. Coi các giá trị đã chia sẻ là bị lộ và xoay vòng trước khi triển khai/chia sẻ thêm.
-- Firebase client config vẫn có trong source (Firebase config phía client không phải server secret), và client có nhánh auto migrate localStorage lên Firestore rồi xóa key cũ. Kiểm tra Firebase rules và ngừng nhánh ngoài dự định; không gửi dữ liệu thật trong khi xác minh.
+- Firebase client config, SDK imports và nhánh auto migrate localStorage đã được gỡ. Cần kiểm tra browser Network để xác nhận không có request CDN/Firebase còn sót.
 - Log error handler ghi toàn bộ error object và URL; hiện chưa thấy route dùng query secret, nhưng nên scrub query/PII khi mở rộng logging.
 - Không thấy file upload/storage, do đó chưa có validation/access control cho file. CV đang là text.
 
 ## Abuse và availability
 
-- Không thấy rate limiting trên auth/message/invite/job-view; có thể bị brute force, spam hoặc làm phình view count.
+- Rate limits đã che một phần auth/message/invite/job-view abuse; store chỉ nằm trong RAM một process và không thay thế abuse controls dùng chung khi scale ngang.
 - Public job list và nhiều user-specific list không pagination; dễ gây tải lớn.
 - Conversations aggregate qua lịch sử tin nhắn trước khi trả latest/unread.
 - `express.json` giới hạn 1 MB, message limit 2.000 ký tự; các mức này là kiểm soát hữu ích nhưng không thay thế quota/rate limiting.
@@ -54,8 +54,8 @@
 ## Ưu tiên khắc phục
 
 1. Xoay DB credential/session secret đã chia sẻ.
-2. Sửa policy profile visibility và kiểm thử BOLA theo role.
-3. Gỡ Firebase auto-migration/client imports hoặc xác nhận chủ đích, bảo vệ local data.
-4. Thay UI 2FA bằng flow thật hoặc bỏ nhãn “đã bật”.
-5. Thêm rate limits, secure headers, CSRF strategy và production proxy/cookie config.
+2. Xác minh policy profile visibility và kiểm thử BOLA theo role.
+3. Kiểm tra browser Network sau khi gỡ Firebase; localStorage legacy được giữ lại.
+4. Giữ UI 2FA ở trạng thái chưa khả dụng cho tới khi triển khai MFA thật.
+5. Chuyển rate limit sang shared store khi scale; bổ sung security headers, CSRF strategy và production proxy/cookie config.
 6. Bổ sung test bảo mật cho ownership, private profiles, authentication/session và dữ liệu đầu vào.

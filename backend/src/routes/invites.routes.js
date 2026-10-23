@@ -3,9 +3,16 @@ const { sql, getPool } = require('../config/database');
 const authenticate = require('../middleware/authenticate');
 const requireRole = require('../middleware/requireRole');
 const asyncHandler = require('../utils/asyncHandler');
+const rateLimit = require('../middleware/rateLimit');
 
 const router = express.Router();
 router.use(authenticate, requireRole('candidate', 'employer'));
+const limitInviteSend = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 20,
+  key: (req) => `user:${req.session?.userId || req.ip}`,
+  message: 'Bạn đã gửi quá nhiều lời mời. Vui lòng thử lại sau.',
+});
 
 function validId(value) {
   return typeof value === 'string' && /^[1-9]\d*$/.test(value);
@@ -28,7 +35,7 @@ router.get('/', requireRole('candidate'), asyncHandler(async (req, res) => {
   return res.json(result.recordset);
 }));
 
-router.post('/', requireRole('employer'), asyncHandler(async (req, res) => {
+router.post('/', requireRole('employer'), limitInviteSend, asyncHandler(async (req, res) => {
   const candidateId = String(req.body?.candidateId ?? '');
   const jobId = req.body?.jobId == null || req.body.jobId === '' ? null : String(req.body.jobId);
   const message = typeof req.body?.message === 'string' ? req.body.message.trim() : '';

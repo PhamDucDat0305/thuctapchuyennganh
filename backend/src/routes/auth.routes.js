@@ -3,9 +3,12 @@ const argon2 = require('argon2');
 const { sql, getPool } = require('../config/database');
 const { SESSION_COOKIE_NAME } = require('../config/session');
 const asyncHandler = require('../utils/asyncHandler');
+const rateLimit = require('../middleware/rateLimit');
 const { regenerateSession, saveSession, destroySession } = require('../utils/sessionHelpers');
 
 const router = express.Router();
+const limitRegister = rateLimit({ windowMs: 60 * 60 * 1000, max: 5, message: 'Bạn đã đăng ký quá nhiều lần. Vui lòng thử lại sau.' });
+const limitLogin = rateLimit({ windowMs: 15 * 60 * 1000, max: 10, message: 'Bạn đã thử đăng nhập quá nhiều lần. Vui lòng thử lại sau.' });
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PUBLIC_ROLES = ['candidate', 'employer']; // không bao giờ nhận 'admin' từ người dùng
@@ -37,7 +40,7 @@ async function startSession(req, userId) {
 }
 
 /* ---------------------------- Đăng ký ---------------------------- */
-router.post('/register', asyncHandler(async (req, res) => {
+router.post('/register', limitRegister, asyncHandler(async (req, res) => {
   const body = req.body || {};
   const email = str(body.email).toLowerCase();
   const password = typeof body.password === 'string' ? body.password : '';
@@ -115,7 +118,7 @@ router.post('/register', asyncHandler(async (req, res) => {
 }));
 
 /* ---------------------------- Đăng nhập ---------------------------- */
-router.post('/login', asyncHandler(async (req, res) => {
+router.post('/login', limitLogin, asyncHandler(async (req, res) => {
   const body = req.body || {};
   const email = str(body.email).toLowerCase();
   const password = typeof body.password === 'string' ? body.password : '';

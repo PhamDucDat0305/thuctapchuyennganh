@@ -15,14 +15,13 @@
 | `argon2` | Băm/đối chiếu password | `^0.45.1`; cài `0.45.1` | `backend/src/routes/auth.routes.js`, `me.routes.js`. |
 | `dotenv` | Đọc biến môi trường | `^18.0.8`; cài `18.0.8` | `backend/src/server.js`, `.env.example`. |
 | `nodemon` | Restart backend khi phát triển | `^3.1.14`; cài `3.1.14` | Script `dev` trong `backend/package.json`. |
-| Firebase JavaScript SDK | Nhánh Firestore cũ/migration | URL CDN `12.2.1` | `js/firebase-config.js`, `js/db.js`. |
 | Font Awesome, Google Fonts | Icon/font qua CDN | Font Awesome URL `6.4.2`; Google Fonts Inter | HTML/CSS liên quan. |
 
-Phiên bản “cài” là kết quả `npm ls --depth=0` tại lần audit, không khẳng định môi trường triển khai của người dùng có cùng phiên bản. Frontend không có lockfile/package manifest; version SDK Firebase được ghim trong URL CDN.
+Phiên bản “cài” là kết quả `npm ls --depth=0` tại lần audit, không khẳng định môi trường triển khai của người dùng có cùng phiên bản. Frontend không có lockfile/package manifest.
 
 ## Dependency backend
 
-Dependencies runtime: `argon2`, `connect-mssql-v2`, `dotenv`, `express`, `express-session`, `mssql`. Dev dependency: `nodemon`. Không thấy thư viện validation schema, rate limiter, security headers, logger cấu trúc, test framework, ORM hoặc OpenAPI generator.
+Dependencies runtime: `argon2`, `connect-mssql-v2`, `dotenv`, `express`, `express-session`, `mssql`. Dev dependency: `nodemon`. Rate limiting hiện dùng middleware in-memory tự viết; chưa có thư viện validation schema, security headers, logger cấu trúc, test framework, ORM hoặc OpenAPI generator.
 
 ## Build/package tools
 

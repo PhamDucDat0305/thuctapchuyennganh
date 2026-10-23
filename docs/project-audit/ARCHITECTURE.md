@@ -102,6 +102,6 @@ Employer mở `employer/candidate-profile.html`; frontend gọi `POST /api/profi
 
 ## Tích hợp và file
 
-- Firebase vẫn được khởi tạo trong browser và được gọi bởi migration legacy trong `js/db.js`; không thấy backend Firebase Admin.
+- Firebase client imports và migration legacy đã được gỡ khỏi source; frontend hiện đi qua Express API. Network runtime chưa kiểm tra.
 - Không tìm thấy email, file upload/download, object storage, WebSocket/SignalR.
 - Không tìm thấy test/build/deployment pipeline.

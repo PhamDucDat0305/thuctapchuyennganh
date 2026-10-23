@@ -1,30 +1,8 @@
-/* ========== DATABASE LAYER (Firestore) ========== */
-import { db } from "./firebase-config.js";
+/* ========== DATABASE LAYER (SQL Server API) ========== */
 import { apiRequest } from "./api.js";
 
-import {
-  collection,
-  doc,
-  getDoc,
-  getDocs,
-  setDoc,
-  addDoc,
-  updateDoc,
-  deleteDoc,
-  query,
-  where,
-  orderBy,
-  limit,
-  serverTimestamp,
-  onSnapshot,
-  increment
-} from "https://www.gstatic.com/firebasejs/12.2.1/firebase-firestore.js";
-
-// Expose onSnapshot for internal use (mostly in app.js or page scripts)
-window.FirebaseFirestore = { onSnapshot };
-
 /**
- * Database utility object for Firestore interactions
+ * Database utility object for the SQL Server API
  */
 window.DB = {
   /* ================= USERS ================= */
@@ -94,11 +72,6 @@ window.DB = {
       return await apiRequest(`/jobs/${encodeURIComponent(jobId)}`);
     } catch (error) {
       if (error.status === 404) return null;
-      // Keep old Firestore-linked application pages readable during migration.
-      if (error.status === 400) {
-        const legacyDoc = await getDoc(doc(db, "jobs", jobId));
-        return legacyDoc.exists() ? { id: legacyDoc.id, ...legacyDoc.data() } : null;
-      }
       console.error(`DB: getJobById error for ${jobId}`, error);
       throw error;
     }
@@ -205,10 +178,6 @@ window.DB = {
       return await apiRequest(`/applications/${encodeURIComponent(applicationId)}`);
     } catch (error) {
       if (error.status === 404) return null;
-      if (error.status === 400) {
-        const legacyDoc = await getDoc(doc(db, "applications", applicationId));
-        return legacyDoc.exists() ? { id: legacyDoc.id, ...legacyDoc.data() } : null;
-      }
       console.error(`DB: getApplicationById error for ${applicationId}`, error);
       throw error;
     }
@@ -560,67 +529,4 @@ window.DB = {
     return await apiRequest("/profile-views");
   },
 
-  /* ================= MIGRATION TOOL ================= */
-
-  /**
-   * Migrate legacy data from LocalStorage to Firestore
-   */
-  async migrateFromLocalStorage() {
-    const collections = ["jobs", "users", "applications", "companies", "messages", "savedJobs"];
-    let migratedCount = 0;
-
-    for (const key of collections) {
-      const data = localStorage.getItem(key);
-      if (!data) continue;
-
-      try {
-        const items = JSON.parse(data);
-        if (Array.isArray(items)) {
-          for (const item of items) {
-            const id = item.id;
-            const dataToSave = { ...item };
-            delete dataToSave.id;
-
-            // Normalization
-            if (key === "jobs") dataToSave.recruiterId = dataToSave.recruiterId || dataToSave.createdBy;
-            if (key === "applications") {
-              dataToSave.applicantId = dataToSave.applicantId || dataToSave.candidateId;
-              if (!dataToSave.recruiterId && dataToSave.jobId) {
-                const jobsData = localStorage.getItem("jobs");
-                if (jobsData) {
-                  const jobs = JSON.parse(jobsData);
-                  const job = jobs.find(j => j.id === dataToSave.jobId);
-                  if (job) dataToSave.recruiterId = job.recruiterId || job.createdBy;
-                }
-              }
-            }
-
-            if (id) {
-              await setDoc(doc(db, key, id), dataToSave);
-            } else {
-              await addDoc(collection(db, key), dataToSave);
-            }
-          }
-        }
-        localStorage.removeItem(key);
-        migratedCount++;
-        console.info(`Migrated ${key} successfully.`);
-      } catch (e) {
-        console.error(`Failed to migrate ${key}:`, e);
-      }
-    }
-
-    if (migratedCount > 0) {
-      console.log("Migration complete. Refreshing...");
-      location.reload();
-    }
-  }
 };
-
-// Kiểm tra migration khi load — chỉ chạy nếu có data cũ VÀ chưa migration
-const hasOldData = ['jobs','users','applications'].some(k => localStorage.getItem(k));
-if (hasOldData && !localStorage.getItem("migration_done")) {
-  window.DB.migrateFromLocalStorage().then(() => {
-    localStorage.setItem("migration_done", "true");
-  });
-}

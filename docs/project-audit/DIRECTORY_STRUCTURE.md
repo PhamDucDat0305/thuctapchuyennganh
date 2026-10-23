@@ -32,9 +32,8 @@ D:\DH52300430\
 | `css/styles.css`, `css/navbar.css`, `css/pages/*.css` | Styles toàn site và theo module | Trung bình | Không |
 | `js/api.js` | Fetch JSON tới API trên port 3000; gửi cookie credentials | Cao | Không |
 | `js/auth.js` | Login/register/logout, cache user, kiểm tra `/api/me` | Cao | Không |
-| `js/db.js` | Adapter `window.DB`; phần lớn gọi API; vẫn import Firebase và chứa migration cũ | Cao | Không |
+| `js/db.js` | Adapter `window.DB`, gọi Express API | Cao | Không |
 | `js/app.js`, `js/navbar.js`, `js/notifications.js` | Navigation, sidebar, badge, UI/toast/chat | Cao | Không |
-| `js/firebase-config.js` | Khởi tạo Firebase client còn sót | Thấp/cần xử lý | Không |
 | `backend/src/server.js` | Entry point; connect DB, listen, shutdown | Cao | Không |
 | `backend/src/app.js` | Express middleware, CORS, JSON, session, route mounting | Cao | Không |
 | `backend/src/config/database.js` | Cấu hình và singleton pool SQL Server | Cao | Không |

@@ -29,7 +29,7 @@ Có code không đồng nghĩa đã được xác minh chạy. Ma trận chi ti�
 - Frontend: HTML/CSS/JavaScript ES modules thuần; không có framework hoặc build tool khai báo.
 - Backend: Node.js + Express, CommonJS, `mssql` kết nối SQL Server, `express-session` và `connect-mssql-v2` lưu session, Argon2 băm mật khẩu.
 - Database: SQL Server, schema `dbo`; cấu hình ví dụ đặt `DB_NAME=job_viet`.
-- Tích hợp còn trong client: Firebase Auth/Firestore SDK được import từ CDN ở `js/firebase-config.js` và `js/db.js`, bao gồm nhánh tự migrate dữ liệu localStorage lên Firestore.
+- Frontend gọi Express API bằng `fetch` và session cookie; mã Firebase client và auto migration localStorage đã được gỡ khỏi source.
 - Không tìm thấy dịch vụ gửi email, upload file, WebSocket/SignalR, Redis, ORM, OpenAPI/Swagger hoặc pipeline deploy.
 
 ```mermaid
@@ -39,11 +39,9 @@ flowchart LR
   API[Express API :3000]
   Session[SQL Server session store]
   DB[(SQL Server job_viet)]
-  Firebase[Firebase Firestore legacy branch]
   Browser --> Client -->|HTTP JSON + cookie| API
   API --> Session
   API --> DB
-  Client -. "legacy import/migration only" .-> Firebase
 ```
 
 ## Cấu trúc project con

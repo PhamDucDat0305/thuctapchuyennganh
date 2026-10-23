@@ -107,6 +107,10 @@
       });
       await waitForModules();
 
+      const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+      })[char]);
+
       const user = window.Auth.requireAuth(['employer']);
       if(!user) return;
       window.App.renderSidebar('employer','myjobs');
@@ -152,11 +156,11 @@
               <div class="card applicant-card mb-2 animate-fade-up" style="padding: 20px;">
                 <div class="flex-between flex-wrap" style="gap:12px">
                   <div class="flex" style="gap:16px">
-                    <div class="applicant-avatar" style="width:48px; height:48px; border-radius:50%; background:var(--bg-light); display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:1.2rem; border:1px solid var(--border)">${(a.fullName || 'U')[0]}</div>
+                    <div class="applicant-avatar" style="width:48px; height:48px; border-radius:50%; background:var(--bg-light); display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:1.2rem; border:1px solid var(--border)">${escapeHtml((a.fullName || 'U')[0])}</div>
                     <div>
-                      <strong class="applicant-name" style="font-size:1.1rem">${a.fullName || 'Người dùng'}</strong><br>
+                      <strong class="applicant-name" style="font-size:1.1rem">${escapeHtml(a.fullName || 'Người dùng')}</strong><br>
                       <span class="applicant-meta" style="font-size:0.85rem; color:var(--text-light)">
-                        <i class="fa-solid fa-envelope"></i> ${a.email || ''} · 
+                        <i class="fa-solid fa-envelope"></i> ${escapeHtml(a.email || '')} ·
                         <i class="fa-solid fa-calendar-days"></i> ${window.App.formatDate(a.appliedAt)}
                       </span>
                     </div>
@@ -164,8 +168,8 @@
                   <span class="badge ${cls}">${label}</span>
                 </div>
                 <div class="cv-content-box" style="margin: 16px 0; padding: 12px; background: var(--bg); border-radius: 8px; border: 1px solid var(--border-light);">
-                  <strong class="cv-label" style="display:block; margin-bottom:4px; font-size:0.9rem;"><i class="fa-solid fa-file-lines"></i> CV / Giới thiệu:</strong>
-                  <div class="cv-text" style="white-space: pre-wrap; font-size: 0.95rem;">${a.cv || 'Không có giới thiệu.'}</div>
+                  <strong class="cv-label" style="display:block; margin-bottom:4px; font-size:0.9rem;"><i class="fa-solid fa-file-lines"></i> Nội dung giới thiệu / CV (văn bản):</strong>
+                  <div class="cv-text" style="white-space: pre-wrap; font-size: 0.95rem;">${escapeHtml(a.cv || 'Không có giới thiệu.')}</div>
                 </div>
                 <div class="flex" style="gap:8px" id="actions_${a.id}">
                   <button onclick="window.App.openChat('${a.applicantId || a.candidateId}')" class="btn btn-sm btn-info"><i class="fa-solid fa-comments"></i> Nhắn tin</button>
@@ -255,8 +259,8 @@
           document.getElementById('header').innerHTML = '<h1>Không tìm thấy tin tuyển dụng</h1>'; 
         } else {
           document.getElementById('header').innerHTML = `
-            <h1><i class="fa-solid fa-users"></i> Ứng viên — ${job.title}</h1>
-            <p>${job.companyName} · ${job.location}</p>`;
+            <h1><i class="fa-solid fa-users"></i> Ứng viên — ${escapeHtml(job.title)}</h1>
+            <p>${escapeHtml(job.companyName)} · ${escapeHtml(job.location)}</p>`;
           window.render();
         }
       } catch (err) {

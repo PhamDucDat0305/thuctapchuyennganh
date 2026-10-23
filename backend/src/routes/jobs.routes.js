@@ -1,8 +1,14 @@
 const express = require('express');
 const { sql, getPool } = require('../config/database');
 const asyncHandler = require('../utils/asyncHandler');
+const rateLimit = require('../middleware/rateLimit');
 
 const router = express.Router();
+const limitJobViews = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  max: 60,
+  message: 'Bạn đã xem quá nhiều tin trong thời gian ngắn. Vui lòng thử lại sau.',
+});
 
 const jobSelect = `
   SELECT
@@ -37,7 +43,7 @@ router.get('/', asyncHandler(async (req, res) => {
 }));
 
 // Count each detail-page visit atomically; the employer's own visits do not count.
-router.post('/:id/view', asyncHandler(async (req, res) => {
+router.post('/:id/view', limitJobViews, asyncHandler(async (req, res) => {
   if (!/^[1-9]\d*$/.test(req.params.id)) {
     return res.status(400).json({ error: 'Mã công việc không hợp lệ' });
   }

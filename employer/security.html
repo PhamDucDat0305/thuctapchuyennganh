@@ -105,55 +105,20 @@
             "
           >
             <div>
-              <p style="font-weight: 600">Xác thực qua Email</p>
+              <p style="font-weight: 600">Tính năng chưa khả dụng</p>
               <p style="color: var(--text-light); font-size: 0.9rem">
-                Nhận mã OTP qua email mỗi khi đăng nhập từ thiết bị lạ.
+                JobViệt chưa gửi và xác minh mã OTP khi đăng nhập. Mục này sẽ được mở lại khi quy trình xác thực hai lớp hoàn chỉnh.
               </p>
             </div>
-            <button class="btn btn-outline" id="btn2FA" onclick="toggle2FA()">
-              Bật 2FA
-            </button>
+            <button class="btn btn-outline" type="button" disabled aria-disabled="true">Chưa hỗ trợ</button>
           </div>
         </div>
 
         <div class="card animate-fade-up" style="animation-delay: 0.2s">
           <h3 class="mb-2">Lịch sử đăng nhập</h3>
-          <div class="table-wrapper">
-            <table class="table">
-              <thead>
-                <tr>
-                  <th>Thiết bị / Trình duyệt</th>
-                  <th>Địa chỉ IP</th>
-                  <th>Thời gian</th>
-                  <th>Trạng thái</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td><strong>Chrome trên Windows</strong></td>
-                  <td>192.168.1.1</td>
-                  <td>Vừa xong (Hiện tại)</td>
-                  <td><span class="badge badge-success">Thành công</span></td>
-                </tr>
-                <tr>
-                  <td><strong>Safari trên iPhone 13</strong></td>
-                  <td>115.79.x.x</td>
-                  <td>Hôm qua, 15:30</td>
-                  <td><span class="badge badge-success">Thành công</span></td>
-                </tr>
-                <tr>
-                  <td><strong>Firefox trên Mac OS</strong></td>
-                  <td>14.161.x.x</td>
-                  <td>3 ngày trước</td>
-                  <td>
-                    <span class="badge badge-danger"
-                      >Thất bại (Sai mật khẩu)</span
-                    >
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+          <p style="color: var(--text-light); font-size: 0.9rem">
+            Chưa có chức năng ghi nhận lịch sử đăng nhập. Các sự kiện sẽ chỉ hiển thị ở đây sau khi backend hỗ trợ lưu log thật.
+          </p>
         </div>
       </main>
     </div>
@@ -166,38 +131,6 @@
       const user = window.Auth.requireAuth(["employer"]);
       if (!user) throw "redirect";
       window.App.renderSidebar("employer", "security");
-
-      const btn = document.getElementById("btn2FA");
-
-      function updateBtn(is2FA) {
-        if (is2FA) {
-          btn.textContent = "Tắt 2FA";
-          btn.classList.replace("btn-outline", "btn-danger");
-        } else {
-          btn.textContent = "Bật 2FA";
-          btn.classList.replace("btn-danger", "btn-outline");
-        }
-      }
-
-      async function toggle2FA() {
-        try {
-          const dbUser = await window.DB.getUserById(user.id);
-          const newStatus = !(dbUser.twoFactorEnabled === true);
-          
-          await window.DB.updateUser(user.id, { twoFactorEnabled: newStatus });
-          updateBtn(newStatus);
-          Toast.success(newStatus ? "Đã bật xác thực 2 lớp" : "Đã tắt xác thực 2 lớp");
-        } catch (error) {
-          Toast.error("Lỗi: " + error.message);
-        }
-      }
-
-      // Initial load
-      window.DB.getUserById(user.id).then(dbUser => {
-        if (dbUser) updateBtn(dbUser.twoFactorEnabled === true);
-      });
-      
-      window.toggle2FA = toggle2FA;
     </script>
   </body>
 </html>

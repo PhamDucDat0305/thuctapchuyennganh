@@ -3,10 +3,17 @@ const { sql, getPool } = require('../config/database');
 const authenticate = require('../middleware/authenticate');
 const requireRole = require('../middleware/requireRole');
 const asyncHandler = require('../utils/asyncHandler');
+const rateLimit = require('../middleware/rateLimit');
 
 const router = express.Router();
 router.use(authenticate, requireRole('candidate', 'employer'));
 const MESSAGE_PAGE_SIZE = 50;
+const limitMessageSend = rateLimit({
+  windowMs: 60 * 1000,
+  max: 30,
+  key: (req) => `user:${req.session?.userId || req.ip}`,
+  message: 'Bạn đang gửi tin quá nhanh. Vui lòng thử lại sau.',
+});
 
 function validId(value) {
   return typeof value === 'string' && /^[1-9]\d*$/.test(value);
@@ -99,7 +106,7 @@ router.get('/conversation/:contactId', asyncHandler(async (req, res) => {
   });
 }));
 
-router.post('/', asyncHandler(async (req, res) => {
+router.post('/', limitMessageSend, asyncHandler(async (req, res) => {
   const receiverId = String(req.body?.receiverId ?? '');
   const content = typeof req.body?.content === 'string' ? req.body.content.trim() : '';
   if (!validId(receiverId)) return res.status(400).json({ error: 'Người nhận không hợp lệ' });

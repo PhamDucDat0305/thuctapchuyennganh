@@ -12,7 +12,7 @@ Base path là `/api`; API chạy port mặc định `3000`. Session cookie đư�
 | `POST /auth/login` | `/login` | Không | email/password; Argon2 verify | 200 user; 400 input; 401 sai credentials đồng nhất; 403 tài khoản không active. |
 | `POST /auth/logout` | `/logout` | Không bắt buộc | Hủy session nếu có | `{ok:true}`; cookie bị clear. |
 | `GET /me` | `me.routes.js` `/` | Session | Không | `{user}`; 401 nếu không auth/session invalid. |
-| `PATCH /me/profile` | `/profile` | Session | Whitelist `fullName,email,phone,searchStatus,twoFactorEnabled,title,location,experience,skills`; giới hạn theo handler | `{user}`; 400 validate/no field; 403 fields nghề nghiệp ngoài candidate; 409 email trùng. |
+| `PATCH /me/profile` | `/profile` | Session | Whitelist `fullName,email,phone,searchStatus,title,location,experience,skills`; searchStatus/profile nghề nghiệp chỉ candidate; twoFactorEnabled bị từ chối vì chưa có MFA | `{user}`; 400 validate/no field/2FA unsupported; 403 fields candidate-only; 409 email trùng. |
 | `POST /me/password` | `/password` | Session | `currentPassword`, `newPassword` 8–128 | `{ok:true}`; 400 password cũ/sai input. |
 | `GET /stats` | `stats.routes.js` `/` | Không | Không | Aggregate job/company/candidate/application counts. |
 | `GET /jobs` | `jobs.routes.js` `/` | Không | Không | Array active non-expired jobs; không có server pagination/query filter trong handler. |

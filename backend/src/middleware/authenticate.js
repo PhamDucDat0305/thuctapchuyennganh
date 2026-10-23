@@ -13,7 +13,7 @@ module.exports = asyncHandler(async (req, res, next) => {
   const result = await getPool()
     .request()
     .input('id', sql.BigInt, userId)
-    .query('SELECT id, email, full_name, role, status, phone, search_status, two_factor_enabled FROM dbo.users WHERE id = @id');
+    .query('SELECT id, email, full_name, role, status, phone, search_status FROM dbo.users WHERE id = @id');
 
   const row = result.recordset[0];
   if (!row || row.status !== 'active') {
@@ -28,7 +28,6 @@ module.exports = asyncHandler(async (req, res, next) => {
     role: row.role,
     phone: row.phone || '',
     searchStatus: Boolean(row.search_status),
-    twoFactorEnabled: Boolean(row.two_factor_enabled),
   };
   next();
 });

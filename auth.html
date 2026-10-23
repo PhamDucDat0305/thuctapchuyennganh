@@ -131,6 +131,16 @@
                 required
               />
             </div>
+            <div class="form-group w-100 text-left" id="companyNameGroup" hidden>
+              <input
+                type="text"
+                class="form-input"
+                id="companyName"
+                placeholder="Tên công ty"
+                maxlength="200"
+                autocomplete="organization"
+              />
+            </div>
             <div class="form-group w-100 text-left">
                 <input
                   type="email"
@@ -290,6 +300,12 @@
         element.classList.add("active");
         document.getElementById("role").value =
           element.getAttribute("data-role");
+        const isEmployer = element.getAttribute("data-role") === "employer";
+        const companyGroup = document.getElementById("companyNameGroup");
+        const companyName = document.getElementById("companyName");
+        companyGroup.hidden = !isEmployer;
+        companyName.required = isEmployer;
+        if (!isEmployer) companyName.value = "";
       }
 
       /* ===== Toast ===== */
@@ -335,8 +351,9 @@
         const email = document.getElementById("email").value.trim();
         const password = document.getElementById("password_reg").value;
         const role = document.getElementById("role").value;
+        const companyName = document.getElementById("companyName").value.trim();
 
-        const result = await window.Auth.register(password, fullName, email, role);
+        const result = await window.Auth.register(password, fullName, email, role, companyName);
         if (!result.success) {
           showToast(result.message, "error");
           return;

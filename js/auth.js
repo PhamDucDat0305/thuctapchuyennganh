@@ -8,7 +8,7 @@ window.Auth = {
   /**
    * Register through Express; the API creates the SQL Server session.
    */
-  async register(password, fullName, email, role) {
+  async register(password, fullName, email, role, companyName = "") {
     try {
       const result = await apiRequest("/auth/register", {
         method: "POST",
@@ -17,8 +17,7 @@ window.Auth = {
           password,
           fullName,
           role,
-          // The current registration form has no separate company name field.
-          ...(role === "employer" ? { companyName: `${fullName} Company` } : {}),
+          ...(role === "employer" ? { companyName: companyName.trim() } : {}),
         }),
       });
       localStorage.setItem("currentUser", JSON.stringify(result.user));

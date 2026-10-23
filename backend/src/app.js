@@ -1,5 +1,5 @@
 const express = require('express');
-const { createSessionMiddleware, closeSessionStore } = require('./config/session');
+const { createSessionMiddleware, connectSessionStore, closeSessionStore } = require('./config/session');
 const healthRoutes = require('./routes/health.routes');
 const authRoutes = require('./routes/auth.routes');
 const meRoutes = require('./routes/me.routes');
@@ -60,5 +60,6 @@ app.use(notFound);
 app.use(errorHandler);
 
 app.locals.closeSessionStore = closeSessionStore;
+app.locals.connectSessionStore = connectSessionStore;
 
 module.exports = app;
