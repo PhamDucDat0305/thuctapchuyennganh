@@ -3,283 +3,56 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link
-      rel="apple-touch-icon"
-      sizes="57x57"
-      href="./ico//apple-icon-57x57.png"
-    />
-    <link
-      rel="apple-touch-icon"
-      sizes="60x60"
-      href="./ico//apple-icon-60x60.png"
-    />
-    <link
-      rel="apple-touch-icon"
-      sizes="72x72"
-      href="./ico//apple-icon-72x72.png"
-    />
-    <link
-      rel="apple-touch-icon"
-      sizes="76x76"
-      href="./ico//apple-icon-76x76.png"
-    />
-    <link
-      rel="apple-touch-icon"
-      sizes="114x114"
-      href="./ico//apple-icon-114x114.png"
-    />
-    <link
-      rel="apple-touch-icon"
-      sizes="120x120"
-      href="./ico//apple-icon-120x120.png"
-    />
-    <link
-      rel="apple-touch-icon"
-      sizes="144x144"
-      href="./ico//apple-icon-144x144.png"
-    />
-    <link
-      rel="apple-touch-icon"
-      sizes="152x152"
-      href="./ico//apple-icon-152x152.png"
-    />
-    <link
-      rel="apple-touch-icon"
-      sizes="180x180"
-      href="./ico//apple-icon-180x180.png"
-    />
-    <link
-      rel="icon"
-      type="image/png"
-      sizes="192x192"
-      href="./ico//android-icon-192x192.png"
-    />
-    <link
-      rel="icon"
-      type="image/png"
-      sizes="32x32"
-      href="./ico//favicon-32x32.png"
-    />
-    <link
-      rel="icon"
-      type="image/png"
-      sizes="96x96"
-      href="./ico//favicon-96x96.png"
-    />
-    <link
-      rel="icon"
-      type="image/png"
-      sizes="16x16"
-      href="./ico//favicon-16x16.png"
-    />
-    <link rel="manifest" href="./ico//manifest.json" />
-    <meta name="msapplication-TileColor" content="#ffffff" />
-    <meta name="msapplication-TileImage" content="./ico/ms-icon-144x144.png" />
-    <meta name="theme-color" content="#ffffff" />
-    
+    <meta name="description" content="Lab Thực Hành — JobViệt. Trang thực hành và thử nghiệm tính năng hệ thống tuyển dụng." />
+    <link rel="icon" type="image/png" sizes="32x32" href="./ico/favicon-32x32.png" />
+    <link rel="manifest" href="./ico/manifest.json" />
+    <title>Lab Thực Hành — JobViệt</title>
     <link rel="stylesheet" href="css/styles.css" />
     <link rel="stylesheet" href="css/navbar.css" />
-    <link rel="stylesheet" href="css/pages/home.css" />
-    <link rel="stylesheet" href="css/pages/lab.css" />
+    <link rel="stylesheet" href="css/pages/static.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" />
-    
-    <title>Lab Thực Hành | JobViệt</title>
   </head>
   <body>
-    <div class="page">
-      <!-- Navbar placeholder -->
+    <div class="page-wrapper">
       <div id="navbar-placeholder"></div>
-
-      <!-- Hero Section -->
-      <section class="hero hero-center">
-        <div class="container hero-content fade-in">
-          <h1>Lab Thực Hành</h1>
-          <p>
-            Khám phá bộ sưu tập các bài tập thực hành từ cơ bản đến nâng cao,
-            giúp bạn làm chủ các kỹ năng lập trình web hiện đại.
+      <section class="hero" style="padding: 60px 0">
+        <div class="container hero-content text-center">
+          <h1 class="animate-fade-up">
+            <i class="fa-solid fa-flask"></i> Lab Thực Hành
+          </h1>
+          <p class="animate-fade-up" style="animation-delay: 0.1s; margin: 0 auto">
+            Trang thực hành và kiểm thử tính năng hệ thống
           </p>
         </div>
       </section>
-
-      <!-- Main Content -->
-      <main class="lab-container">
+      <section class="main-content">
         <div class="container">
-          <div class="lab-grid stagger">
-            <!-- Lab 1 -->
-            <section class="lab-card fade-in">
-              <div class="lab-icon-wrapper"><i class="fa-solid fa-code"></i></div>
-              <h3>Lab 1: HTML Cơ bản</h3>
-              <ul class="lab-list">
-                <li class="lab-item">
-                  <a href="LabThucHanh/Lab01/Vi_du/lab1_bai4.html" class="lab-link" target="_blank">
-                    <span><i class="fa-solid fa-file-code"></i> lab1_bai4</span>
-                    <i class="fa-solid fa-chevron-right"></i>
-                  </a>
-                </li>
-              </ul>
-            </section>
-
-            <!-- Lab 2 -->
-            <section class="lab-card fade-in">
-              <div class="lab-icon-wrapper"><i class="fa-solid fa-table"></i></div>
-              <h3>Lab 2: Bảng & Liên kết</h3>
-              <ul class="lab-list">
-                <li class="lab-item">
-                  <a href="LabThucHanh/Lab02/lab02_bai1.html" class="lab-link" target="_blank">
-                    <span><i class="fa-solid fa-table-cells"></i> lab02_bai1</span>
-                    <i class="fa-solid fa-chevron-right"></i>
-                  </a>
-                </li>
-                <li class="lab-item">
-                  <a href="LabThucHanh/Lab02/lab02_bai2.html" class="lab-link" target="_blank">
-                    <span><i class="fa-solid fa-link"></i> lab02_bai2</span>
-                    <i class="fa-solid fa-chevron-right"></i>
-                  </a>
-                </li>
-                <li class="lab-item">
-                  <a href="LabThucHanh/Lab02/Vi_du_Lab01/lab02_bai3.html" class="lab-link" target="_blank">
-                    <span><i class="fa-solid fa-file-code"></i> lab02_bai3</span>
-                    <i class="fa-solid fa-chevron-right"></i>
-                  </a>
-                </li>
-              </ul>
-            </section>
-
-            <!-- Lab 3 -->
-            <section class="lab-card fade-in">
-              <div class="lab-icon-wrapper"><i class="fa-solid fa-wpforms"></i></div>
-              <h3>Lab 3: Form & UI</h3>
-              <ul class="lab-list">
-                <li class="lab-item">
-                  <a href="LabThucHanh/Lab03/Vi_du_Lab01/index.html" class="lab-link" target="_blank">
-                    <span><i class="fa-solid fa-house-laptop"></i> index</span>
-                    <i class="fa-solid fa-chevron-right"></i>
-                  </a>
-                </li>
-                <li class="lab-item">
-                  <a href="LabThucHanh/Lab03/Vi_du_Lab01/lab03_bai1.html" class="lab-link" target="_blank">
-                    <span><i class="fa-solid fa-list-check"></i> lab03_bai1</span>
-                    <i class="fa-solid fa-chevron-right"></i>
-                  </a>
-                </li>
-              </ul>
-            </section>
-
-            <!-- Lab 4 -->
-            <section class="lab-card fade-in">
-              <div class="lab-icon-wrapper"><i class="fa-solid fa-palette"></i></div>
-              <h3>Lab 4: CSS Styling</h3>
-              <ul class="lab-list">
-                <li class="lab-item">
-                  <a href="LabThucHanh/Lab04/Vi_du/index.html" class="lab-link" target="_blank">
-                    <span><i class="fa-solid fa-wand-magic-sparkles"></i> index</span>
-                    <i class="fa-solid fa-chevron-right"></i>
-                  </a>
-                </li>
-                <li class="lab-item">
-                  <a href="LabThucHanh/Lab04/Vi_du/lab04_bai1.html" class="lab-link" target="_blank">
-                    <span><i class="fa-solid fa-file-code"></i> lab04_bai1</span>
-                    <i class="fa-solid fa-chevron-right"></i>
-                  </a>
-                </li>
-                <li class="lab-item">
-                  <a href="LabThucHanh/Lab04/Vi_du/lab04_bai2.html" class="lab-link" target="_blank">
-                    <span><i class="fa-solid fa-file-code"></i> lab04_bai2</span>
-                    <i class="fa-solid fa-chevron-right"></i>
-                  </a>
-                </li>
-                <li class="lab-item">
-                  <a href="LabThucHanh/Lab04/Vi_du/lab04_bai3.html" class="lab-link" target="_blank">
-                    <span><i class="fa-solid fa-file-code"></i> lab04_bai3</span>
-                    <i class="fa-solid fa-chevron-right"></i>
-                  </a>
-                </li>
-              </ul>
-            </section>
-
-            <!-- Lab 5 -->
-            <section class="lab-card fade-in">
-              <div class="lab-icon-wrapper"><i class="fa-solid fa-layer-group"></i></div>
-              <h3>Lab 5: Layout Float</h3>
-              <ul class="lab-list">
-                <li class="lab-item">
-                  <a href="LabThucHanh/Lab05/Lab05/Vi_du/index.html" class="lab-link" target="_blank">
-                    <span><i class="fa-solid fa-border-all"></i> index</span>
-                    <i class="fa-solid fa-chevron-right"></i>
-                  </a>
-                </li>
-                <li class="lab-item">
-                  <a href="LabThucHanh/Lab05/Lab05/Bai_2/index.html" class="lab-link" target="_blank">
-                    <span><i class="fa-solid fa-file-code"></i> index</span>
-                    <i class="fa-solid fa-chevron-right"></i>
-                  </a>
-                </li>
-                <li class="lab-item">
-                  <a href="LabThucHanh/Lab05/Lab05/Bai_2/lab5_menu.html" class="lab-link" target="_blank">
-                    <span><i class="fa-solid fa-list"></i> lab5_menu</span>
-                    <i class="fa-solid fa-chevron-right"></i>
-                  </a>
-                </li>
-              </ul>
-            </section>
-
-            <!-- Lab 6 -->
-            <section class="lab-card fade-in">
-              <div class="lab-icon-wrapper"><i class="fa-solid fa-box-archive"></i></div>
-              <h3>Lab 6: Flexbox Magic</h3>
-              <ul class="lab-list">
-                <li class="lab-item">
-                  <a href="LabThucHanh/Lab06/Vi_du/index.html" class="lab-link" target="_blank">
-                    <span><i class="fa-solid fa-object-group"></i> index</span>
-                    <i class="fa-solid fa-chevron-right"></i>
-                  </a>
-                </li>
-                <li class="lab-item">
-                  <a href="LabThucHanh/Lab06/Bai_2_Minh_hoa_layout/index.html" class="lab-link" target="_blank">
-                    <span><i class="fa-solid fa-file-code"></i> index</span>
-                    <i class="fa-solid fa-chevron-right"></i>
-                  </a>
-                </li>
-                <li class="lab-item">
-                  <a href="LabThucHanh/Lab06/Bai_2_Minh_hoa_layout/nav.html" class="lab-link" target="_blank">
-                    <span><i class="fa-solid fa-compass"></i> nav</span>
-                    <i class="fa-solid fa-chevron-right"></i>
-                  </a>
-                </li>
-              </ul>
-            </section>
-
-            <!-- Lab 7 -->
-            <section class="lab-card fade-in">
-              <div class="lab-icon-wrapper"><i class="fa-solid fa-mobile-screen"></i></div>
-              <h3>Lab 7: Responsive</h3>
-              <ul class="lab-list">
-                <li class="lab-item">
-                  <a href="LabThucHanh/Lab07/Vi_du/index.html" class="lab-link" target="_blank">
-                    <span><i class="fa-solid fa-laptop-code"></i> index</span>
-                    <i class="fa-solid fa-chevron-right"></i>
-                  </a>
-                </li>
-                <li class="lab-item">
-                  <a href="LabThucHanh/Lab07/demo_bai_2/index.html" class="lab-link" target="_blank">
-                    <span><i class="fa-solid fa-display"></i> index</span>
-                    <i class="fa-solid fa-chevron-right"></i>
-                  </a>
-                </li>
-              </ul>
-            </section>
+          <div class="card animate-fade-up" style="padding: 40px; text-align: center; margin: 40px auto; max-width: 600px">
+            <div style="font-size: 4rem; margin-bottom: 20px; color: var(--primary)">
+              <i class="fa-solid fa-flask-vial"></i>
+            </div>
+            <h2>🔬 Môi trường Thử nghiệm</h2>
+            <p style="color: var(--text-light); margin: 16px 0; line-height: 1.7">
+              Trang này được sử dụng cho mục đích thực hành và kiểm thử các tính năng của hệ thống JobViệt.
+              Các tính năng ở đây có thể đang trong quá trình phát triển.
+            </p>
+            <div class="grid grid-2" style="gap: 16px; margin-top: 24px">
+              <a href="index.html" class="btn btn-primary">
+                <i class="fa-solid fa-house"></i> Về Trang chủ
+              </a>
+              <a href="job-list.html" class="btn btn-outline">
+                <i class="fa-solid fa-briefcase"></i> Xem Việc làm
+              </a>
+            </div>
           </div>
         </div>
-      </main>
-
-      <!-- Footer placeholder -->
+      </section>
       <footer class="footer" id="footer"></footer>
     </div>
-
-    <!-- Scripts -->
     <script type="module" src="js/db.js"></script>
     <script type="module" src="js/auth.js"></script>
-    <script src="js/navbar.js"></script>
+    <script src="js/notifications.js"></script>
     <script type="module" src="js/app.js"></script>
+    <script src="js/navbar.js"></script>
   </body>
 </html>

@@ -6,73 +6,73 @@
     <link
       rel="apple-touch-icon"
       sizes="57x57"
-      href="../ico//apple-icon-57x57.png"
+      href="../ico/apple-icon-57x57.png"
     />
     <link
       rel="apple-touch-icon"
       sizes="60x60"
-      href="../ico//apple-icon-60x60.png"
+      href="../ico/apple-icon-60x60.png"
     />
     <link
       rel="apple-touch-icon"
       sizes="72x72"
-      href="../ico//apple-icon-72x72.png"
+      href="../ico/apple-icon-72x72.png"
     />
     <link
       rel="apple-touch-icon"
       sizes="76x76"
-      href="../ico//apple-icon-76x76.png"
+      href="../ico/apple-icon-76x76.png"
     />
     <link
       rel="apple-touch-icon"
       sizes="114x114"
-      href="../ico//apple-icon-114x114.png"
+      href="../ico/apple-icon-114x114.png"
     />
     <link
       rel="apple-touch-icon"
       sizes="120x120"
-      href="../ico//apple-icon-120x120.png"
+      href="../ico/apple-icon-120x120.png"
     />
     <link
       rel="apple-touch-icon"
       sizes="144x144"
-      href="../ico//apple-icon-144x144.png"
+      href="../ico/apple-icon-144x144.png"
     />
     <link
       rel="apple-touch-icon"
       sizes="152x152"
-      href="../ico//apple-icon-152x152.png"
+      href="../ico/apple-icon-152x152.png"
     />
     <link
       rel="apple-touch-icon"
       sizes="180x180"
-      href="../ico//apple-icon-180x180.png"
+      href="../ico/apple-icon-180x180.png"
     />
     <link
       rel="icon"
       type="image/png"
       sizes="192x192"
-      href="../ico//android-icon-192x192.png"
+      href="../ico/android-icon-192x192.png"
     />
     <link
       rel="icon"
       type="image/png"
       sizes="32x32"
-      href="../ico//favicon-32x32.png"
+      href="../ico/favicon-32x32.png"
     />
     <link
       rel="icon"
       type="image/png"
       sizes="96x96"
-      href="../ico//favicon-96x96.png"
+      href="../ico/favicon-96x96.png"
     />
     <link
       rel="icon"
       type="image/png"
       sizes="16x16"
-      href="../ico//favicon-16x16.png"
+      href="../ico/favicon-16x16.png"
     />
-    <link rel="manifest" href="../ico//manifest.json" />
+    <link rel="manifest" href="../ico/manifest.json" />
     <meta name="msapplication-TileColor" content="#ffffff" />
     <meta name="msapplication-TileImage" content="./ico/ms-icon-144x144.png" />
     <meta name="theme-color" content="#ffffff" />
@@ -125,6 +125,24 @@
                 placeholder="09xxxx"
               />
             </div>
+            <hr />
+            <h3>Hồ sơ nghề nghiệp</h3>
+            <div class="form-group">
+              <label class="form-label">Vị trí / chức danh mong muốn</label>
+              <input class="form-input" id="title" maxlength="200" placeholder="Ví dụ: Frontend Developer" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Địa điểm làm việc</label>
+              <input class="form-input" id="location" maxlength="200" placeholder="Ví dụ: TP. Hồ Chí Minh" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Kinh nghiệm</label>
+              <input class="form-input" id="experience" maxlength="100" placeholder="Ví dụ: 1-3 năm" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Kỹ năng (phân cách bằng dấu phẩy)</label>
+              <input class="form-input" id="skills" maxlength="1000" placeholder="JavaScript, React, SQL" />
+            </div>
             <div class="form-group">
               <label class="form-label">Tên đăng nhập (Username)</label>
               <input
@@ -156,7 +174,7 @@
     <script type="module" src="../js/app.js"></script>
     <script src="../js/navbar.js"></script>
     <script type="module">
-      const user = window.window.Auth.requireAuth(["candidate"]);
+      const user = window.Auth.requireAuth(["candidate"]);
       if (!user) throw "redirect";
       window.App.renderSidebar("candidate", "account");
 
@@ -167,6 +185,12 @@
       document.getElementById("displayName").textContent = user.fullName;
       document.getElementById("avatarPreview").textContent =
         user.fullName[0].toUpperCase();
+      const profile = await window.DB.getUserById(user.id);
+      document.getElementById("phone").value = profile?.phone || "";
+      document.getElementById("title").value = profile?.title || "";
+      document.getElementById("location").value = profile?.location || "";
+      document.getElementById("experience").value = profile?.experience || "";
+      document.getElementById("skills").value = (profile?.skills || []).join(", ");
 
       async function updateAccount(e) {
         e.preventDefault();
@@ -178,7 +202,11 @@
           const updates = { 
             fullName: newName, 
             email: newEmail,
-            phone: phone
+            phone,
+            title: document.getElementById("title").value.trim(),
+            location: document.getElementById("location").value.trim(),
+            experience: document.getElementById("experience").value.trim(),
+            skills: document.getElementById("skills").value.split(",").map(s => s.trim()).filter(Boolean)
           };
           
           await window.DB.updateUser(user.id, updates);

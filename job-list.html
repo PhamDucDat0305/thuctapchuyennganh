@@ -6,77 +6,78 @@
     <link
       rel="apple-touch-icon"
       sizes="57x57"
-      href="./ico//apple-icon-57x57.png"
+      href="./ico/apple-icon-57x57.png"
     />
     <link
       rel="apple-touch-icon"
       sizes="60x60"
-      href="./ico//apple-icon-60x60.png"
+      href="./ico/apple-icon-60x60.png"
     />
     <link
       rel="apple-touch-icon"
       sizes="72x72"
-      href="./ico//apple-icon-72x72.png"
+      href="./ico/apple-icon-72x72.png"
     />
     <link
       rel="apple-touch-icon"
       sizes="76x76"
-      href="./ico//apple-icon-76x76.png"
+      href="./ico/apple-icon-76x76.png"
     />
     <link
       rel="apple-touch-icon"
       sizes="114x114"
-      href="./ico//apple-icon-114x114.png"
+      href="./ico/apple-icon-114x114.png"
     />
     <link
       rel="apple-touch-icon"
       sizes="120x120"
-      href="./ico//apple-icon-120x120.png"
+      href="./ico/apple-icon-120x120.png"
     />
     <link
       rel="apple-touch-icon"
       sizes="144x144"
-      href="./ico//apple-icon-144x144.png"
+      href="./ico/apple-icon-144x144.png"
     />
     <link
       rel="apple-touch-icon"
       sizes="152x152"
-      href="./ico//apple-icon-152x152.png"
+      href="./ico/apple-icon-152x152.png"
     />
     <link
       rel="apple-touch-icon"
       sizes="180x180"
-      href="./ico//apple-icon-180x180.png"
+      href="./ico/apple-icon-180x180.png"
     />
     <link
       rel="icon"
       type="image/png"
       sizes="192x192"
-      href="./ico//android-icon-192x192.png"
+      href="./ico/android-icon-192x192.png"
     />
     <link
       rel="icon"
       type="image/png"
       sizes="32x32"
-      href="./ico//favicon-32x32.png"
+      href="./ico/favicon-32x32.png"
     />
     <link
       rel="icon"
       type="image/png"
       sizes="96x96"
-      href="./ico//favicon-96x96.png"
+      href="./ico/favicon-96x96.png"
     />
     <link
       rel="icon"
       type="image/png"
       sizes="16x16"
-      href="./ico//favicon-16x16.png"
+      href="./ico/favicon-16x16.png"
     />
-    <link rel="manifest" href="./ico//manifest.json" />
+    <link rel="manifest" href="./ico/manifest.json" />
     <meta name="msapplication-TileColor" content="#ffffff" />
     <meta name="msapplication-TileImage" content="./ico/ms-icon-144x144.png" />
     <meta name="theme-color" content="#ffffff" />
-    <title>Danh sách việc làm</title>
+    <title>Danh sách việc làm — JobViệt</title>
+    <meta name="description" content="Tìm kiếm hàng ngàn cơ hội việc làm tại JobViệt. Lọc theo ngành nghề, mức lương, địa điểm và kinh nghiệm." />
     <link rel="stylesheet" href="css/styles.css" />
     <link rel="stylesheet" href="css/navbar.css" />
     <link rel="stylesheet" href="css/pages/job.css" />
@@ -264,14 +265,14 @@
                 ${user && user.role === "candidate" ? `<button class="save-btn ${saved ? "saved" : ""}" onclick="toggleSave('${job.id}', this)" title="${saved ? "Bỏ lưu" : "Lưu việc làm"}"><i class="fa-${saved ? "solid" : "regular"} fa-heart"></i></button>` : ""}
               </div>
               <div class="job-meta">
-                <span><i class="fa-solid fa-location-dot text-danger"></i> ${job.location}</span>
-                <span><i class="fa-solid fa-money-bill-wave text-success"></i> ${job.salary}</span>
-                <span><i class="fa-solid fa-clock text-info"></i> ${job.type}</span>
-                <span><i class="fa-solid fa-user-tie text-purple"></i> ${job.experience}</span>
+                <span><i class="fa-solid fa-location-dot text-danger"></i> ${escapeHtml(job.location)}</span>
+                <span><i class="fa-solid fa-money-bill-wave text-success"></i> ${escapeHtml(job.salary)}</span>
+                <span><i class="fa-solid fa-clock text-info"></i> ${escapeHtml(job.type)}</span>
+                <span><i class="fa-solid fa-user-tie text-purple"></i> ${escapeHtml(job.experience)}</span>
               </div>
               <div class="job-tags">
-                <span class="badge badge-primary">${job.category}</span>
-                <span class="badge badge-neutral">${job.experience}</span>
+                <span class="badge badge-primary">${escapeHtml(job.category)}</span>
+                <span class="badge badge-neutral">${escapeHtml(job.experience)}</span>
               </div>
               <div class="job-actions">
                 <a href="job-detail.html?id=${job.id}" class="btn btn-sm btn-primary">Xem chi tiết</a>
@@ -292,20 +293,27 @@
           listContainer.innerHTML = `<div class="empty-state" style="grid-column:1/-1">
             <div class="empty-icon" style="color: var(--danger)">⚠️</div>
             <h3>Lỗi tải dữ liệu</h3>
-            <p>Vui lòng kiểm tra quyền truy cập Firestore của bạn.</p>
-            <p style="font-size: 0.8rem; color: var(--text-light)">${error.message}</p>
+            <p>Vui lòng kiểm tra backend API và kết nối SQL Server.</p>
+            <p style="font-size: 0.8rem; color: var(--text-light)">${escapeHtml(error.message)}</p>
           </div>`;
         }
       }
 
+      function escapeHtml(value) {
+        return String(value ?? "").replace(/[&<>"']/g, (char) => ({
+          "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+        })[char]);
+      }
+
       window.highlightText = function(text) {
         const q = document.getElementById("searchInput").value.trim();
-        if (!q) return text;
+        const safeText = escapeHtml(text);
+        if (!q) return safeText;
         const re = new RegExp(
-          `(${q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`,
+          `(${escapeHtml(q).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`,
           "gi",
         );
-        return text.replace(
+        return safeText.replace(
           re,
           '<mark style="background:#FEF08A;padding:1px 2px;border-radius:3px">$1</mark>',
         );

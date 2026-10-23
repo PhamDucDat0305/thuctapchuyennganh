@@ -1,5 +1,6 @@
 /* ========== DATABASE LAYER (Firestore) ========== */
 import { db } from "./firebase-config.js";
+import { apiRequest } from "./api.js";
 
 import {
   collection,
@@ -15,7 +16,8 @@ import {
   orderBy,
   limit,
   serverTimestamp,
-  onSnapshot
+  onSnapshot,
+  increment
 } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-firestore.js";
 
 // Expose onSnapshot for internal use (mostly in app.js or page scripts)
@@ -32,9 +34,7 @@ window.DB = {
    */
   async getUsers() {
     try {
-      const q = collection(db, "users");
-      const snap = await getDocs(q);
-      return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      return await apiRequest("/users/candidates");
     } catch (error) {
       console.error("DB: getUsers error", error);
       return [];
@@ -47,11 +47,11 @@ window.DB = {
   async getUserById(userId) {
     if (!userId) return null;
     try {
-      const d = await getDoc(doc(db, "users", userId));
-      return d.exists() ? { id: d.id, ...d.data() } : null;
+      return await apiRequest(`/users/${encodeURIComponent(userId)}`);
     } catch (error) {
+      if (error.status === 404) return null;
       console.error(`DB: getUserById error for ${userId}`, error);
-      return null;
+      throw error;
     }
   },
 
@@ -60,10 +60,11 @@ window.DB = {
    */
   async updateUser(userId, data) {
     try {
-      await updateDoc(doc(db, "users", userId), {
-        ...data,
-        updatedAt: serverTimestamp()
+      const result = await apiRequest("/me/profile", {
+        method: "PATCH",
+        body: JSON.stringify(data),
       });
+      return result.user;
     } catch (error) {
       console.error(`DB: updateUser error for ${userId}`, error);
       throw error;
@@ -77,12 +78,10 @@ window.DB = {
    */
   async getJobs() {
     try {
-      const q = collection(db, "jobs");
-      const snapshot = await getDocs(q);
-      return snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+      return await apiRequest("/jobs");
     } catch (error) {
       console.error("DB: getJobs error", error);
-      return [];
+      throw error;
     }
   },
 
@@ -92,11 +91,16 @@ window.DB = {
   async getJobById(jobId) {
     if (!jobId) return null;
     try {
-      const d = await getDoc(doc(db, "jobs", jobId));
-      return d.exists() ? { id: d.id, ...d.data() } : null;
+      return await apiRequest(`/jobs/${encodeURIComponent(jobId)}`);
     } catch (error) {
+      if (error.status === 404) return null;
+      // Keep old Firestore-linked application pages readable during migration.
+      if (error.status === 400) {
+        const legacyDoc = await getDoc(doc(db, "jobs", jobId));
+        return legacyDoc.exists() ? { id: legacyDoc.id, ...legacyDoc.data() } : null;
+      }
       console.error(`DB: getJobById error for ${jobId}`, error);
-      return null;
+      throw error;
     }
   },
 
@@ -106,20 +110,10 @@ window.DB = {
   async getJobsByEmployer(employerId) {
     if (!employerId) return [];
     try {
-      const q = query(collection(db, "jobs"), where("recruiterId", "==", employerId));
-      const snapshot = await getDocs(q);
-      
-      if (snapshot.empty) {
-        // Compatibility fallback for old data using 'createdBy'
-        const qOld = query(collection(db, "jobs"), where("createdBy", "==", employerId));
-        const snapOld = await getDocs(qOld);
-        return snapOld.docs.map(d => ({ id: d.id, ...d.data() }));
-      }
-      
-      return snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+      return await apiRequest("/employer/jobs");
     } catch (error) {
       console.error(`DB: getJobsByEmployer error for ${employerId}`, error);
-      return [];
+      throw error;
     }
   },
 
@@ -128,15 +122,10 @@ window.DB = {
    */
   async createJob(data) {
     try {
-      const jobData = {
-        ...data,
-        recruiterId: data.recruiterId || data.createdBy,
-        createdAt: new Date().toISOString(),
-        status: "active",
-        views: 0,
-      };
-      const docRef = await addDoc(collection(db, "jobs"), jobData);
-      return { id: docRef.id, ...jobData };
+      return await apiRequest("/employer/jobs", {
+        method: "POST",
+        body: JSON.stringify(data),
+      });
     } catch (error) {
       console.error("DB: createJob error", error);
       throw error;
@@ -148,11 +137,10 @@ window.DB = {
    */
   async updateJob(jobId, data) {
     try {
-      await updateDoc(doc(db, "jobs", jobId), {
-        ...data,
-        updatedAt: new Date().toISOString()
+      return await apiRequest(`/employer/jobs/${encodeURIComponent(jobId)}`, {
+        method: "PATCH",
+        body: JSON.stringify(data),
       });
-      return await this.getJobById(jobId);
     } catch (error) {
       console.error(`DB: updateJob error for ${jobId}`, error);
       throw error;
@@ -164,7 +152,9 @@ window.DB = {
    */
   async deleteJob(jobId) {
     try {
-      await deleteDoc(doc(db, "jobs", jobId));
+      return await apiRequest(`/employer/jobs/${encodeURIComponent(jobId)}/close`, {
+        method: "PATCH",
+      });
     } catch (error) {
       console.error(`DB: deleteJob error for ${jobId}`, error);
       throw error;
@@ -172,14 +162,16 @@ window.DB = {
   },
 
   /**
-   * Increment view counter for a job
+   * Increment view counter for a job (atomic)
    */
   async incrementJobViews(jobId) {
+    if (!/^[1-9]\d*$/.test(String(jobId))) return;
     try {
-      const job = await this.getJobById(jobId);
-      if (job) {
-        await updateDoc(doc(db, "jobs", jobId), { views: (job.views || 0) + 1 });
-      }
+      const viewedKey = `job_view_counted_${jobId}`;
+      if (sessionStorage.getItem(viewedKey)) return { counted: false, duplicate: true };
+      const result = await apiRequest(`/jobs/${encodeURIComponent(jobId)}/view`, { method: "POST" });
+      if (result.counted) sessionStorage.setItem(viewedKey, "1");
+      return result;
     } catch (error) {
       console.warn(`DB: incrementJobViews error for ${jobId}`, error);
     }
@@ -192,13 +184,16 @@ window.DB = {
    */
   async getApplications() {
     try {
-      const q = collection(db, "applications");
-      const snap = await getDocs(q);
-      return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      if (!localStorage.getItem("currentUser")) return [];
+      return await apiRequest("/applications");
     } catch (error) {
       console.error("DB: getApplications error", error);
       return [];
     }
+  },
+
+  async getPublicStats() {
+    return await apiRequest("/stats");
   },
 
   /**
@@ -207,11 +202,15 @@ window.DB = {
   async getApplicationById(applicationId) {
     if (!applicationId) return null;
     try {
-      const d = await getDoc(doc(db, "applications", applicationId));
-      return d.exists() ? { id: d.id, ...d.data() } : null;
+      return await apiRequest(`/applications/${encodeURIComponent(applicationId)}`);
     } catch (error) {
+      if (error.status === 404) return null;
+      if (error.status === 400) {
+        const legacyDoc = await getDoc(doc(db, "applications", applicationId));
+        return legacyDoc.exists() ? { id: legacyDoc.id, ...legacyDoc.data() } : null;
+      }
       console.error(`DB: getApplicationById error for ${applicationId}`, error);
-      return null;
+      throw error;
     }
   },
 
@@ -221,12 +220,10 @@ window.DB = {
   async getApplicationsByJob(jobId) {
     if (!jobId) return [];
     try {
-      const q = query(collection(db, "applications"), where("jobId", "==", jobId));
-      const snap = await getDocs(q);
-      return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      return await apiRequest(`/applications/job/${encodeURIComponent(jobId)}`);
     } catch (error) {
       console.error(`DB: getApplicationsByJob error for ${jobId}`, error);
-      return [];
+      throw error;
     }
   },
 
@@ -236,20 +233,10 @@ window.DB = {
   async getApplicationsByCandidate(candidateId) {
     if (!candidateId) return [];
     try {
-      const q = query(collection(db, "applications"), where("applicantId", "==", candidateId));
-      const snap = await getDocs(q);
-      
-      if (snap.empty) {
-        // Compatibility fallback for old data using 'candidateId' as field
-        const qOld = query(collection(db, "applications"), where("candidateId", "==", candidateId));
-        const snapOld = await getDocs(qOld);
-        return snapOld.docs.map(d => ({ id: d.id, ...d.data() }));
-      }
-      
-      return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      return await apiRequest("/applications");
     } catch (error) {
       console.error(`DB: getApplicationsByCandidate error for ${candidateId}`, error);
-      return [];
+      throw error;
     }
   },
 
@@ -259,16 +246,11 @@ window.DB = {
   async hasApplied(jobId, candidateId) {
     if (!jobId || !candidateId) return false;
     try {
-      // Check both field name variants
-      const q1 = query(collection(db, "applications"), where("jobId", "==", jobId), where("applicantId", "==", candidateId));
-      const snap1 = await getDocs(q1);
-      if (!snap1.empty) return true;
-
-      const q2 = query(collection(db, "applications"), where("jobId", "==", jobId), where("candidateId", "==", candidateId));
-      const snap2 = await getDocs(q2);
-      return !snap2.empty;
+      const result = await apiRequest(`/applications/check/${encodeURIComponent(jobId)}`);
+      return result.hasApplied;
     } catch (error) {
-      return false;
+      console.error(`DB: hasApplied error for ${jobId}`, error);
+      throw error;
     }
   },
 
@@ -277,22 +259,10 @@ window.DB = {
    */
   async createApplication(data) {
     try {
-      const appData = {
-        ...data,
-        applicantId: data.applicantId || data.candidateId,
-        status: "applied",
-        appliedAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      };
-      
-      // Auto-fill recruiterId if missing for efficient dashboard queries
-      if (!appData.recruiterId && appData.jobId) {
-        const job = await this.getJobById(appData.jobId);
-        if (job) appData.recruiterId = job.recruiterId || job.createdBy;
-      }
-      
-      const docRef = await addDoc(collection(db, "applications"), appData);
-      return { id: docRef.id, ...appData };
+      return await apiRequest("/applications", {
+        method: "POST",
+        body: JSON.stringify({ jobId: data.jobId, cv: data.cv }),
+      });
     } catch (error) {
       console.error("DB: createApplication error", error);
       throw error;
@@ -304,18 +274,7 @@ window.DB = {
    */
   onApplicationsByRecruiter(recruiterId, callback) {
     if (!recruiterId) return () => {};
-    try {
-      const { onSnapshot } = window.FirebaseFirestore;
-      const q = query(collection(db, "applications"), where("recruiterId", "==", recruiterId)); 
-      
-      return onSnapshot(q, (snap) => {
-        const apps = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        callback(apps);
-      });
-    } catch (error) {
-      console.error("DB: onApplicationsByRecruiter error", error);
-      return () => {};
-    }
+    return this._pollApplications(callback);
   },
 
   /**
@@ -323,27 +282,37 @@ window.DB = {
    */
   onApplicationsByCandidate(candidateId, callback) {
     if (!candidateId) return () => {};
-    try {
-      const { onSnapshot } = window.FirebaseFirestore;
-      const q = query(collection(db, "applications"), where("applicantId", "==", candidateId));
-      
-      return onSnapshot(q, (snap) => {
-        const apps = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        callback(apps);
-      });
-    } catch (error) {
-      console.error("DB: onApplicationsByCandidate error", error);
-      return () => {};
-    }
+    return this._pollApplications(callback);
+  },
+
+  _pollApplications(callback) {
+    let stopped = false;
+    let busy = false;
+    const refresh = async () => {
+      if (stopped || busy) return;
+      busy = true;
+      try {
+        callback(await apiRequest("/applications"));
+      } catch (error) {
+        console.error("DB: polling applications error", error);
+      } finally {
+        busy = false;
+      }
+    };
+    refresh();
+    const timer = setInterval(refresh, 5000);
+    return () => {
+      stopped = true;
+      clearInterval(timer);
+    };
   },
 
   async updateApplication(applicationId, data) {
     try {
-      await updateDoc(doc(db, "applications", applicationId), {
-        ...data,
-        updatedAt: new Date().toISOString()
+      return await apiRequest(`/applications/${encodeURIComponent(applicationId)}`, {
+        method: "PATCH",
+        body: JSON.stringify({ status: data.status }),
       });
-      return await this.getApplicationById(applicationId);
     } catch (error) {
       console.error(`DB: updateApplication error for ${applicationId}`, error);
       throw error;
@@ -355,7 +324,9 @@ window.DB = {
    */
   async deleteApplication(applicationId) {
     try {
-      await deleteDoc(doc(db, "applications", applicationId));
+      return await apiRequest(`/applications/${encodeURIComponent(applicationId)}`, {
+        method: "DELETE",
+      });
     } catch (error) {
       console.error(`DB: deleteApplication error for ${applicationId}`, error);
       throw error;
@@ -369,11 +340,11 @@ window.DB = {
    */
   async getInterviews() {
     try {
-      const q = collection(db, "interviews");
-      const snap = await getDocs(q);
-      return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      if (!localStorage.getItem("currentUser")) return [];
+      return await apiRequest("/interviews");
     } catch (error) {
-      return [];
+      console.error("DB: getInterviews error", error);
+      throw error;
     }
   },
 
@@ -381,12 +352,13 @@ window.DB = {
    * Fetch interview details for an application
    */
   async getInterviewByApplication(applicationId) {
+    if (!applicationId) return null;
     try {
-      const q = query(collection(db, "interviews"), where("applicationId", "==", applicationId));
-      const snap = await getDocs(q);
-      return snap.empty ? null : { id: snap.docs[0].id, ...snap.docs[0].data() };
+      return await apiRequest(`/interviews/application/${encodeURIComponent(applicationId)}`);
     } catch (error) {
-      return null;
+      if (error.status === 404) return null;
+      console.error(`DB: getInterviewByApplication error for ${applicationId}`, error);
+      throw error;
     }
   },
 
@@ -395,14 +367,10 @@ window.DB = {
    */
   async scheduleInterview(applicationId, data) {
     try {
-      const interviewData = {
-        applicationId,
-        ...data,
-        createdAt: new Date().toISOString(),
-      };
-      const docRef = await addDoc(collection(db, "interviews"), interviewData);
-      await this.updateApplication(applicationId, { status: "interview_scheduled" });
-      return { id: docRef.id, ...interviewData };
+      return await apiRequest("/interviews", {
+        method: "POST",
+        body: JSON.stringify({ applicationId, ...data }),
+      });
     } catch (error) {
       console.error("DB: scheduleInterview error", error);
       throw error;
@@ -416,11 +384,23 @@ window.DB = {
    */
   async getSavedJobs(userId) {
     try {
-      const q = query(collection(db, "savedJobs"), where("userId", "==", userId));
-      const snap = await getDocs(q);
-      return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      if (!userId) return [];
+      return await apiRequest("/saved-jobs");
     } catch (error) {
-      return [];
+      console.error("DB: getSavedJobs error", error);
+      throw error;
+    }
+  },
+
+  /** Check whether a candidate has saved a job. */
+  async isJobSaved(userId, jobId) {
+    if (!userId || !jobId) return false;
+    try {
+      const result = await apiRequest(`/saved-jobs/check/${encodeURIComponent(jobId)}`);
+      return result.saved;
+    } catch (error) {
+      console.error("DB: isJobSaved error", error);
+      throw error;
     }
   },
 
@@ -429,23 +409,12 @@ window.DB = {
    */
   async toggleSaveJob(userId, jobId) {
     try {
-      const q = query(collection(db, "savedJobs"), where("userId", "==", userId), where("jobId", "==", jobId));
-      const snap = await getDocs(q);
-      
-      if (!snap.empty) {
-        await deleteDoc(doc(db, "savedJobs", snap.docs[0].id));
-        return false;
-      } else {
-        await addDoc(collection(db, "savedJobs"), {
-          userId,
-          jobId,
-          savedAt: new Date().toISOString()
-        });
-        return true;
-      }
+      if (!jobId) throw new Error("Mã công việc không hợp lệ");
+      const result = await apiRequest(`/saved-jobs/${encodeURIComponent(jobId)}/toggle`, { method: "POST" });
+      return result.saved;
     } catch (error) {
       console.error("DB: toggleSaveJob error", error);
-      return false;
+      throw error;
     }
   },
 
@@ -457,10 +426,21 @@ window.DB = {
   async getCompanyByEmployer(employerId) {
     if (!employerId) return null;
     try {
-      const d = await getDoc(doc(db, "companies", employerId));
-      return d.exists() ? { id: d.id, ...d.data() } : null;
+      return await apiRequest("/employer/company");
     } catch (error) {
-      return null;
+      console.error(`DB: getCompanyByEmployer error for ${employerId}`, error);
+      throw error;
+    }
+  },
+
+  /** Get a job through the employer-only API, including non-public statuses. */
+  async getEmployerJobById(jobId) {
+    if (!jobId) return null;
+    try {
+      return await apiRequest(`/employer/jobs/${encodeURIComponent(jobId)}`);
+    } catch (error) {
+      if (error.status === 404) return null;
+      throw error;
     }
   },
 
@@ -469,13 +449,13 @@ window.DB = {
    */
   async createCompany(employerId, data) {
     try {
-      await setDoc(doc(db, "companies", employerId), {
-        employerId,
-        ...data,
-        createdAt: new Date().toISOString()
+      return await apiRequest("/employer/company", {
+        method: "POST",
+        body: JSON.stringify(data),
       });
     } catch (error) {
       console.error("DB: createCompany error", error);
+      throw error;
     }
   },
 
@@ -484,102 +464,100 @@ window.DB = {
    */
   async updateCompany(employerId, data) {
     try {
-      await updateDoc(doc(db, "companies", employerId), {
-        ...data,
-        updatedAt: new Date().toISOString()
+      return await apiRequest("/employer/company", {
+        method: "PUT",
+        body: JSON.stringify(data),
       });
     } catch (error) {
       console.error("DB: updateCompany error", error);
-    }
-  },
-
-  /* ================= MESSAGES ================= */
-
-  /**
-   * Fetch chat history between two users
-   */
-  async getMessages(userId, contactId) {
-    try {
-      const q1 = query(collection(db, "messages"), where("senderId", "==", userId), where("receiverId", "==", contactId));
-      const q2 = query(collection(db, "messages"), where("senderId", "==", contactId), where("receiverId", "==", userId));
-      
-      const [s1, s2] = await Promise.all([getDocs(q1), getDocs(q2)]);
-      const msgs = [...s1.docs, ...s2.docs].map(d => ({ id: d.id, ...d.data() }));
-      return msgs.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-    } catch (error) {
-      return [];
-    }
-  },
-
-  /**
-   * Send a new chat message
-   */
-  async sendMessage(senderId, receiverId, content) {
-    try {
-      const msg = {
-        senderId,
-        receiverId,
-        content,
-        timestamp: new Date().toISOString(),
-        read: false,
-      };
-      const docRef = await addDoc(collection(db, "messages"), msg);
-      return { id: docRef.id, ...msg };
-    } catch (error) {
-      console.error("DB: sendMessage error", error);
       throw error;
     }
   },
 
-  /**
-   * Fetch all conversations for a user
-   */
-  async getConversations(userId) {
-    try {
-      const q1 = query(collection(db, "messages"), where("senderId", "==", userId));
-      const q2 = query(collection(db, "messages"), where("receiverId", "==", userId));
-      const [s1, s2] = await Promise.all([getDocs(q1), getDocs(q2)]);
-      const allMsgs = [...s1.docs, ...s2.docs].map(d => ({ id: d.id, ...d.data() }));
-      
-      const contacts = new Set();
-      allMsgs.forEach(m => {
-        if (m.senderId === userId) contacts.add(m.receiverId);
-        else contacts.add(m.senderId);
-      });
+  async changePassword(currentPassword, newPassword) {
+    return await apiRequest("/me/password", {
+      method: "POST",
+      body: JSON.stringify({ currentPassword, newPassword }),
+    });
+  },
 
-      const results = [];
-      for (const cId of contacts) {
-        const contact = await this.getUserById(cId);
-        const contactMsgs = allMsgs.filter(m => m.senderId === cId || m.receiverId === cId);
-        const sorted = contactMsgs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-        const lastMsg = sorted[0];
-        const unreadCount = contactMsgs.filter(m => m.receiverId === userId && !m.read).length;
-        
-        results.push({
-          contact,
-          lastMessage: lastMsg,
-          unreadCount
-        });
-      }
-      return results;
-    } catch (error) {
-      console.error("DB: getConversations error", error);
-      return [];
-    }
+  /* ================= MESSAGES ================= */
+
+  /** Fetch chat history from the SQL Server API. */
+  async getMessages(userId, contactId, cursor = null) {
+    const query = cursor
+      ? `?beforeId=${encodeURIComponent(cursor.beforeId)}&beforeTimestamp=${encodeURIComponent(cursor.beforeTimestamp)}`
+      : "";
+    return await apiRequest(`/messages/conversation/${encodeURIComponent(contactId)}${query}`);
+  },
+
+  /** Send a message; the backend takes sender identity from the session. */
+  async sendMessage(senderId, receiverId, content) {
+    return await apiRequest("/messages", {
+      method: "POST",
+      body: JSON.stringify({ receiverId, content }),
+    });
+  },
+
+  /** Fetch conversations and unread counts from SQL Server. */
+  async getConversations(userId) {
+    return await apiRequest("/messages/conversations");
+  },
+
+  /** Mark all messages from a contact as read. */
+  async markAsRead(userId, contactId) {
+    return await apiRequest(`/messages/read/${encodeURIComponent(contactId)}`, { method: "PATCH" });
+  },
+
+  /* ================= EMPLOYER INVITES ================= */
+
+  /**
+   * Gửi lời mời kết nối từ nhà tuyển dụng đến ứng viên
+   */
+  async sendInvite(employerId, candidateId, jobId, message) {
+    return await apiRequest("/invites", {
+      method: "POST",
+      body: JSON.stringify({ candidateId, jobId: jobId || null, message: message || "" }),
+    });
   },
 
   /**
-   * Mark messages as read
+   * Lấy danh sách lời mời của ứng viên
    */
-  async markAsRead(userId, contactId) {
-    try {
-      const q = query(collection(db, "messages"), where("senderId", "==", contactId), where("receiverId", "==", userId), where("read", "==", false));
-      const snap = await getDocs(q);
-      const promises = snap.docs.map(d => updateDoc(doc(db, "messages", d.id), { read: true }));
-      await Promise.all(promises);
-    } catch (error) {
-      // Ignore
-    }
+  async getInvitesByCandidate(candidateId) {
+    if (!candidateId) return [];
+    return await apiRequest("/invites");
+  },
+
+  /**
+   * Cập nhật trạng thái lời mời (accepted/rejected)
+   */
+  async updateInviteStatus(inviteId, status) {
+    return await apiRequest(`/invites/${encodeURIComponent(inviteId)}/status`, {
+      method: "PATCH",
+      body: JSON.stringify({ status }),
+    });
+  },
+
+  /* ================= PROFILE VIEWS ================= */
+
+  /**
+   * Ghi nhận lượt xem hồ sơ ứng viên
+   */
+  async recordProfileView(employerId, candidateId) {
+    if (!candidateId) return;
+    return await apiRequest("/profile-views", {
+      method: "POST",
+      body: JSON.stringify({ candidateId }),
+    });
+  },
+
+  /**
+   * Lấy danh sách nhà tuyển dụng đã xem hồ sơ ứng viên
+   */
+  async getProfileViewsByCandidate(candidateId) {
+    if (!candidateId) return [];
+    return await apiRequest("/profile-views");
   },
 
   /* ================= MIGRATION TOOL ================= */
@@ -588,7 +566,7 @@ window.DB = {
    * Migrate legacy data from LocalStorage to Firestore
    */
   async migrateFromLocalStorage() {
-    const collections = ["jobs", "users", "applications", "companies", "interviews", "messages", "savedJobs"];
+    const collections = ["jobs", "users", "applications", "companies", "messages", "savedJobs"];
     let migratedCount = 0;
 
     for (const key of collections) {
@@ -639,8 +617,9 @@ window.DB = {
   }
 };
 
-// Check for migration on load
-if (localStorage.getItem("currentUser") && !localStorage.getItem("migration_done")) {
+// Kiểm tra migration khi load — chỉ chạy nếu có data cũ VÀ chưa migration
+const hasOldData = ['jobs','users','applications'].some(k => localStorage.getItem(k));
+if (hasOldData && !localStorage.getItem("migration_done")) {
   window.DB.migrateFromLocalStorage().then(() => {
     localStorage.setItem("migration_done", "true");
   });

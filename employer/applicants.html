@@ -6,73 +6,73 @@
     <link
       rel="apple-touch-icon"
       sizes="57x57"
-      href="../ico//apple-icon-57x57.png"
+      href="../ico/apple-icon-57x57.png"
     />
     <link
       rel="apple-touch-icon"
       sizes="60x60"
-      href="../ico//apple-icon-60x60.png"
+      href="../ico/apple-icon-60x60.png"
     />
     <link
       rel="apple-touch-icon"
       sizes="72x72"
-      href="../ico//apple-icon-72x72.png"
+      href="../ico/apple-icon-72x72.png"
     />
     <link
       rel="apple-touch-icon"
       sizes="76x76"
-      href="../ico//apple-icon-76x76.png"
+      href="../ico/apple-icon-76x76.png"
     />
     <link
       rel="apple-touch-icon"
       sizes="114x114"
-      href="../ico//apple-icon-114x114.png"
+      href="../ico/apple-icon-114x114.png"
     />
     <link
       rel="apple-touch-icon"
       sizes="120x120"
-      href="../ico//apple-icon-120x120.png"
+      href="../ico/apple-icon-120x120.png"
     />
     <link
       rel="apple-touch-icon"
       sizes="144x144"
-      href="../ico//apple-icon-144x144.png"
+      href="../ico/apple-icon-144x144.png"
     />
     <link
       rel="apple-touch-icon"
       sizes="152x152"
-      href="../ico//apple-icon-152x152.png"
+      href="../ico/apple-icon-152x152.png"
     />
     <link
       rel="apple-touch-icon"
       sizes="180x180"
-      href="../ico//apple-icon-180x180.png"
+      href="../ico/apple-icon-180x180.png"
     />
     <link
       rel="icon"
       type="image/png"
       sizes="192x192"
-      href="../ico//android-icon-192x192.png"
+      href="../ico/android-icon-192x192.png"
     />
     <link
       rel="icon"
       type="image/png"
       sizes="32x32"
-      href="../ico//favicon-32x32.png"
+      href="../ico/favicon-32x32.png"
     />
     <link
       rel="icon"
       type="image/png"
       sizes="96x96"
-      href="../ico//favicon-96x96.png"
+      href="../ico/favicon-96x96.png"
     />
     <link
       rel="icon"
       type="image/png"
       sizes="16x16"
-      href="../ico//favicon-16x16.png"
+      href="../ico/favicon-16x16.png"
     />
-    <link rel="manifest" href="../ico//manifest.json" />
+    <link rel="manifest" href="../ico/manifest.json" />
     <meta name="msapplication-TileColor" content="#ffffff" />
     <meta name="msapplication-TileImage" content="./ico/ms-icon-144x144.png" />
     <meta name="theme-color" content="#ffffff" />
@@ -121,7 +121,7 @@
     <script type="module" src="../js/app.js"></script>
     <script src="../js/navbar.js"></script>
     <script type="module">
-      const user = window.window.Auth.requireAuth(["employer"]);
+      const user = window.Auth.requireAuth(["employer"]);
       if (!user) throw "redirect";
       window.App.renderSidebar("employer", "applicants");
 
@@ -169,6 +169,8 @@
             </div>
             <div class="flex-between" style="width:100%; margin-top:auto; border-top:1px solid var(--border-light); padding-top:16px">
               <button class="btn btn-sm btn-outline" onclick="Toast.success('Đã lưu ứng viên')"><i class="fa-solid fa-heart"></i> Lưu</button>
+              <a class="btn btn-sm btn-outline" href="candidate-profile.html?id=${encodeURIComponent(c.id)}">Xem hồ sơ</a>
+              <button class="btn btn-sm btn-outline" onclick="sendInviteToCandidate('${c.id}')"><i class="fa-solid fa-handshake"></i> Mời kết nối</button>
               <button class="btn btn-sm btn-primary" onclick="window.App.openChat('${c.id}')">Liên hệ</button>
             </div>
           </div>
@@ -194,6 +196,18 @@
 
         render(filtered);
       }
+
+      window.sendInviteToCandidate = async function(candidateId) {
+        const message = window.prompt('Lời nhắn gửi ứng viên (không bắt buộc, tối đa 1.000 ký tự):');
+        if (message === null) return;
+        try {
+          await window.DB.sendInvite(user.id, candidateId, null, message);
+          Toast.success('Đã gửi lời mời kết nối.');
+        } catch (error) {
+          console.error('Không gửi được lời mời:', error);
+          Toast.error(error.message || 'Không gửi được lời mời.');
+        }
+      };
 
       // Initial render
       initPage();

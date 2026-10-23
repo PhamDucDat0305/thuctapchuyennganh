@@ -6,73 +6,73 @@
     <link
       rel="apple-touch-icon"
       sizes="57x57"
-      href="../ico//apple-icon-57x57.png"
+      href="../ico/apple-icon-57x57.png"
     />
     <link
       rel="apple-touch-icon"
       sizes="60x60"
-      href="../ico//apple-icon-60x60.png"
+      href="../ico/apple-icon-60x60.png"
     />
     <link
       rel="apple-touch-icon"
       sizes="72x72"
-      href="../ico//apple-icon-72x72.png"
+      href="../ico/apple-icon-72x72.png"
     />
     <link
       rel="apple-touch-icon"
       sizes="76x76"
-      href="../ico//apple-icon-76x76.png"
+      href="../ico/apple-icon-76x76.png"
     />
     <link
       rel="apple-touch-icon"
       sizes="114x114"
-      href="../ico//apple-icon-114x114.png"
+      href="../ico/apple-icon-114x114.png"
     />
     <link
       rel="apple-touch-icon"
       sizes="120x120"
-      href="../ico//apple-icon-120x120.png"
+      href="../ico/apple-icon-120x120.png"
     />
     <link
       rel="apple-touch-icon"
       sizes="144x144"
-      href="../ico//apple-icon-144x144.png"
+      href="../ico/apple-icon-144x144.png"
     />
     <link
       rel="apple-touch-icon"
       sizes="152x152"
-      href="../ico//apple-icon-152x152.png"
+      href="../ico/apple-icon-152x152.png"
     />
     <link
       rel="apple-touch-icon"
       sizes="180x180"
-      href="../ico//apple-icon-180x180.png"
+      href="../ico/apple-icon-180x180.png"
     />
     <link
       rel="icon"
       type="image/png"
       sizes="192x192"
-      href="../ico//android-icon-192x192.png"
+      href="../ico/android-icon-192x192.png"
     />
     <link
       rel="icon"
       type="image/png"
       sizes="32x32"
-      href="../ico//favicon-32x32.png"
+      href="../ico/favicon-32x32.png"
     />
     <link
       rel="icon"
       type="image/png"
       sizes="96x96"
-      href="../ico//favicon-96x96.png"
+      href="../ico/favicon-96x96.png"
     />
     <link
       rel="icon"
       type="image/png"
       sizes="16x16"
-      href="../ico//favicon-16x16.png"
+      href="../ico/favicon-16x16.png"
     />
-    <link rel="manifest" href="../ico//manifest.json" />
+    <link rel="manifest" href="../ico/manifest.json" />
     <meta name="msapplication-TileColor" content="#ffffff" />
     <meta name="msapplication-TileImage" content="./ico/ms-icon-144x144.png" />
     <meta name="theme-color" content="#ffffff" />
@@ -123,6 +123,42 @@
       window.App.renderSidebar("candidate", "messages");
 
       let activeContactId = new URLSearchParams(location.search).get("to");
+      let olderMessageCursor = null;
+      let hasOlderMessages = false;
+      let loadingOlderMessages = false;
+
+      function escapeHtml(value) {
+        return String(value ?? "").replace(/[&<>"']/g, (char) => ({
+          "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+        })[char]);
+      }
+
+      function renderMessage(m) {
+        const time = new Date(m.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+        return `<div class="msg ${m.senderId === user.id ? "msg-sent" : "msg-received"}" data-message-id="${m.id}">${escapeHtml(m.content)}<span class="msg-time">${time}</span></div>`;
+      }
+
+      window.loadOlderMessages = async function() {
+        if (!activeContactId || !olderMessageCursor || !hasOlderMessages || loadingOlderMessages) return;
+        const list = document.getElementById("msgList");
+        const button = document.getElementById("loadOlderMessages");
+        if (!list || !button) return;
+        loadingOlderMessages = true;
+        button.disabled = true;
+        const oldHeight = list.scrollHeight;
+        const oldTop = list.scrollTop;
+        try {
+          const page = await window.DB.getMessages(user.id, activeContactId, olderMessageCursor);
+          olderMessageCursor = page.nextCursor;
+          hasOlderMessages = page.hasMore;
+          button.insertAdjacentHTML("afterend", page.messages.map(renderMessage).join(""));
+          button.hidden = !hasOlderMessages;
+          list.scrollTop = oldTop + (list.scrollHeight - oldHeight);
+        } finally {
+          loadingOlderMessages = false;
+          if (button.isConnected) button.disabled = false;
+        }
+      };
 
       async function renderConversations() {
         const conversations = await window.DB.getConversations(user.id);
@@ -141,13 +177,13 @@
               .map((n) => n[0])
               .join("")
               .slice(0, 2);
-            const isActive = c.contact?.id === activeContactId;
+            const isActive = String(c.contact?.id) === activeContactId;
             return `
             <div class="conv-item ${isActive ? "active" : ""}" onclick="selectContact('${c.contact?.id}')">
               <div class="conv-avatar">${initials}</div>
               <div class="conv-info">
-                <div class="conv-name">${c.contact?.fullName || "Người dùng"}</div>
-                <div class="conv-last-msg">${c.lastMessage ? (c.lastMessage.senderId === user.id ? "Bạn: " : "") + c.lastMessage.content : "Bắt đầu trò chuyện"}</div>
+                <div class="conv-name">${escapeHtml(c.contact?.fullName || "Người dùng")}</div>
+                <div class="conv-last-msg">${escapeHtml(c.lastMessage ? (c.lastMessage.senderId === user.id ? "Bạn: " : "") + c.lastMessage.content : "Bắt đầu trò chuyện")}</div>
               </div>
               ${c.unreadCount > 0 ? `<div class="conv-unread">${c.unreadCount}</div>` : ""}
             </div>
@@ -172,7 +208,9 @@
         const contact = await window.DB.getUserById(activeContactId);
         if (!contact) return;
 
-        const messages = await window.DB.getMessages(user.id, activeContactId);
+        const page = await window.DB.getMessages(user.id, activeContactId);
+        olderMessageCursor = page.nextCursor;
+        hasOlderMessages = page.hasMore;
         const initials = contact.fullName
           .split(" ")
           .map((n) => n[0])
@@ -183,27 +221,14 @@
         chatMain.innerHTML = `
           <div class="chat-header">
             <div class="conv-avatar" style="width:40px; height:40px">${initials}</div>
-            <div class="conv-name">${contact.fullName}</div>
+            <div class="conv-name">${escapeHtml(contact.fullName)}</div>
           </div>
           <div class="chat-messages" id="msgList">
-            ${messages
-              .map((m) => {
-                const isMine = m.senderId === user.id;
-                const time = new Date(m.timestamp).toLocaleTimeString([], {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                });
-                return `
-                <div class="msg ${isMine ? "msg-sent" : "msg-received"}">
-                  ${m.content}
-                  <span class="msg-time">${time}</span>
-                </div>
-              `;
-              })
-              .join("")}
+            ${hasOlderMessages ? '<button type="button" id="loadOlderMessages" onclick="loadOlderMessages()">Tải tin nhắn cũ hơn</button>' : ""}
+            ${page.messages.map(renderMessage).join("")}
           </div>
           <form class="chat-input-area" onsubmit="handleSend(event)">
-            <input type="text" class="chat-input" id="chatInput" placeholder="Nhập tin nhắn..." autocomplete="off">
+            <input type="text" class="chat-input" id="chatInput" maxlength="2000" placeholder="Nhập tin nhắn..." autocomplete="off">
             <button type="submit" class="btn-send"><i class="fa-solid fa-paper-plane"></i></button>
           </form>
         `;
@@ -238,9 +263,10 @@
         if (activeContactId) {
           const list = document.getElementById("msgList");
           if (!list) return;
-          const countBefore = list.children.length;
-          const messages = await window.DB.getMessages(user.id, activeContactId);
-          if (messages.length > countBefore) {
+          const page = await window.DB.getMessages(user.id, activeContactId);
+          const lastRenderedId = list.querySelector(".msg:last-child")?.dataset.messageId;
+          const latestId = page.messages.at(-1)?.id;
+          if (latestId && String(latestId) !== lastRenderedId) {
             await renderChat();
           }
         }

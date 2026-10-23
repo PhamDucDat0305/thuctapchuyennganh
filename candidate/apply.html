@@ -6,73 +6,73 @@
     <link
       rel="apple-touch-icon"
       sizes="57x57"
-      href="../ico//apple-icon-57x57.png"
+      href="../ico/apple-icon-57x57.png"
     />
     <link
       rel="apple-touch-icon"
       sizes="60x60"
-      href="../ico//apple-icon-60x60.png"
+      href="../ico/apple-icon-60x60.png"
     />
     <link
       rel="apple-touch-icon"
       sizes="72x72"
-      href="../ico//apple-icon-72x72.png"
+      href="../ico/apple-icon-72x72.png"
     />
     <link
       rel="apple-touch-icon"
       sizes="76x76"
-      href="../ico//apple-icon-76x76.png"
+      href="../ico/apple-icon-76x76.png"
     />
     <link
       rel="apple-touch-icon"
       sizes="114x114"
-      href="../ico//apple-icon-114x114.png"
+      href="../ico/apple-icon-114x114.png"
     />
     <link
       rel="apple-touch-icon"
       sizes="120x120"
-      href="../ico//apple-icon-120x120.png"
+      href="../ico/apple-icon-120x120.png"
     />
     <link
       rel="apple-touch-icon"
       sizes="144x144"
-      href="../ico//apple-icon-144x144.png"
+      href="../ico/apple-icon-144x144.png"
     />
     <link
       rel="apple-touch-icon"
       sizes="152x152"
-      href="../ico//apple-icon-152x152.png"
+      href="../ico/apple-icon-152x152.png"
     />
     <link
       rel="apple-touch-icon"
       sizes="180x180"
-      href="../ico//apple-icon-180x180.png"
+      href="../ico/apple-icon-180x180.png"
     />
     <link
       rel="icon"
       type="image/png"
       sizes="192x192"
-      href="../ico//android-icon-192x192.png"
+      href="../ico/android-icon-192x192.png"
     />
     <link
       rel="icon"
       type="image/png"
       sizes="32x32"
-      href="../ico//favicon-32x32.png"
+      href="../ico/favicon-32x32.png"
     />
     <link
       rel="icon"
       type="image/png"
       sizes="96x96"
-      href="../ico//favicon-96x96.png"
+      href="../ico/favicon-96x96.png"
     />
     <link
       rel="icon"
       type="image/png"
       sizes="16x16"
-      href="../ico//favicon-16x16.png"
+      href="../ico/favicon-16x16.png"
     />
-    <link rel="manifest" href="../ico//manifest.json" />
+    <link rel="manifest" href="../ico/manifest.json" />
     <meta name="msapplication-TileColor" content="#ffffff" />
     <meta name="msapplication-TileImage" content="./ico/ms-icon-144x144.png" />
     <meta name="theme-color" content="#ffffff" />
@@ -107,33 +107,39 @@
         const user = window.Auth.requireAuth(["candidate"]);
         if (!user) return;
         window.App.renderFooter();
+        const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({
+          "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+        })[char]);
 
-        const jobId = new URLSearchParams(location.search).get("jobId");
-        const job = await window.DB.getJobById(jobId);
         const card = document.getElementById("applyCard");
+        const jobId = new URLSearchParams(location.search).get("jobId");
+        card.innerHTML = '<div class="text-center" style="padding:24px">Đang tải thông tin ứng tuyển...</div>';
 
-        const hasApplied = await window.DB.hasApplied(jobId, user.id);
+        try {
+          const job = await window.DB.getJobById(jobId);
+          if (!job) {
+            card.innerHTML = '<div class="empty-state"><div class="empty-icon"><i class="fa-solid fa-circle-xmark"></i></div><h3>Không tìm thấy việc làm</h3></div>';
+            return;
+          }
+          const hasApplied = await window.DB.hasApplied(jobId, user.id);
+          if (hasApplied) {
+            card.innerHTML = '<div class="empty-state"><div class="empty-icon"><i class="fa-solid fa-circle-check"></i></div><h3>Bạn đã ứng tuyển việc này</h3><p>Theo dõi trạng thái tại trang "Việc đã ứng tuyển"</p><a href="my-applications.html" class="btn btn-primary mt-2">Xem danh sách</a></div>';
+            return;
+          }
 
-        if (!job) {
-          card.innerHTML =
-            '<div class="empty-state"><div class="empty-icon"><i class="fa-solid fa-circle-xmark"></i></div><h3>Không tìm thấy việc làm</h3></div>';
-        } else if (hasApplied) {
-          card.innerHTML =
-            '<div class="empty-state"><div class="empty-icon"><i class="fa-solid fa-circle-check"></i></div><h3>Bạn đã ứng tuyển việc này</h3><p>Theo dõi trạng thái tại trang "Việc đã ứng tuyển"</p><a href="my-applications.html" class="btn btn-primary mt-2">Xem danh sách</a></div>';
-        } else {
           card.innerHTML = `
           <div class="mb-3">
             <h2><i class="fa-solid fa-envelope-open-text"></i> Ứng tuyển</h2>
-            <p class="cv-meta">${job.title} — ${job.companyName}</p>
+            <p class="cv-meta">${escapeHtml(job.title)} — ${escapeHtml(job.companyName)}</p>
           </div>
-          <form onsubmit="submitApplication(event)">
+          <form id="applicationForm">
             <div class="form-group">
               <label class="form-label">Họ và tên</label>
-              <input class="form-input" id="fullName" value="${user.fullName || ""}" required>
+              <input class="form-input" id="fullName" value="${escapeHtml(user.fullName)}" readonly required>
             </div>
             <div class="form-group">
               <label class="form-label">Email</label>
-              <input type="email" class="form-input" id="email" value="${user.email || ""}" required>
+              <input type="email" class="form-input" id="email" value="${escapeHtml(user.email)}" readonly required>
             </div>
             <div class="form-group">
               <label class="form-label">Giới thiệu bản thân / CV</label>
@@ -143,7 +149,6 @@
             <button type="submit" class="btn btn-primary btn-large w-100"><i class="fa-solid fa-paper-plane"></i> Gửi ứng tuyển</button>
           </form>
         `;
-        }
 
         window.submitApplication = async function(e) {
           e.preventDefault();
@@ -151,21 +156,23 @@
           btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Đang gửi...';
           btn.disabled = true;
 
-          await window.DB.createApplication({
-            jobId: jobId,
-            applicantId: user.id,
-            candidateId: user.id, // Keep for fallback
-            recruiterId: job.recruiterId || job.createdBy,
-            fullName: document.getElementById("fullName").value.trim(),
-            email: document.getElementById("email").value.trim(),
-            cv: document.getElementById("cv").value.trim(),
-          });
-          Toast.success(
-            "🎉 Ứng tuyển thành công! Nhà tuyển dụng sẽ xem hồ sơ của bạn.",
-          );
-          setTimeout(() => {
-            location.href = "my-applications.html";
-          }, 1500);
+          try {
+            await window.DB.createApplication({
+              jobId,
+              cv: document.getElementById("cv").value.trim(),
+            });
+            Toast.success("🎉 Ứng tuyển thành công! Nhà tuyển dụng sẽ xem hồ sơ của bạn.");
+            setTimeout(() => { location.href = "my-applications.html"; }, 1500);
+          } catch (error) {
+            Toast.error("Không thể gửi ứng tuyển: " + error.message);
+            btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Gửi ứng tuyển';
+            btn.disabled = false;
+          }
+        }
+        card.querySelector("#applicationForm").addEventListener("submit", window.submitApplication);
+        } catch (error) {
+          console.error("Không tải được form ứng tuyển:", error);
+          card.innerHTML = `<div class="empty-state"><h3>Không tải được thông tin ứng tuyển</h3><p>${escapeHtml(error.message)}</p><p>Kiểm tra backend, session đăng nhập và bảng applications trong SQL Server.</p></div>`;
         }
       });
     </script>

@@ -812,6 +812,21 @@ a {
   scrollbar-width: thin;
   scrollbar-color: #d1d5db transparent;
 }
+.w-msg-list > button,
+.chat-messages > button {
+  align-self: center;
+  margin: 4px auto 10px;
+  padding: 6px 12px;
+  border: 1px solid #dbe3ee;
+  border-radius: 16px;
+  background: #fff;
+  color: #2563eb;
+  font: inherit;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+.w-msg-list > button:disabled,
+.chat-messages > button:disabled { opacity: 0.6; cursor: wait; }
 .w-msg-list::-webkit-scrollbar { width: 4px; }
 .w-msg-list::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 8px; }
 

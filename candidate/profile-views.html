@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="vi">
   <head>
     <meta charset="UTF-8" />
@@ -6,73 +6,73 @@
     <link
       rel="apple-touch-icon"
       sizes="57x57"
-      href="../ico//apple-icon-57x57.png"
+      href="../ico/apple-icon-57x57.png"
     />
     <link
       rel="apple-touch-icon"
       sizes="60x60"
-      href="../ico//apple-icon-60x60.png"
+      href="../ico/apple-icon-60x60.png"
     />
     <link
       rel="apple-touch-icon"
       sizes="72x72"
-      href="../ico//apple-icon-72x72.png"
+      href="../ico/apple-icon-72x72.png"
     />
     <link
       rel="apple-touch-icon"
       sizes="76x76"
-      href="../ico//apple-icon-76x76.png"
+      href="../ico/apple-icon-76x76.png"
     />
     <link
       rel="apple-touch-icon"
       sizes="114x114"
-      href="../ico//apple-icon-114x114.png"
+      href="../ico/apple-icon-114x114.png"
     />
     <link
       rel="apple-touch-icon"
       sizes="120x120"
-      href="../ico//apple-icon-120x120.png"
+      href="../ico/apple-icon-120x120.png"
     />
     <link
       rel="apple-touch-icon"
       sizes="144x144"
-      href="../ico//apple-icon-144x144.png"
+      href="../ico/apple-icon-144x144.png"
     />
     <link
       rel="apple-touch-icon"
       sizes="152x152"
-      href="../ico//apple-icon-152x152.png"
+      href="../ico/apple-icon-152x152.png"
     />
     <link
       rel="apple-touch-icon"
       sizes="180x180"
-      href="../ico//apple-icon-180x180.png"
+      href="../ico/apple-icon-180x180.png"
     />
     <link
       rel="icon"
       type="image/png"
       sizes="192x192"
-      href="../ico//android-icon-192x192.png"
+      href="../ico/android-icon-192x192.png"
     />
     <link
       rel="icon"
       type="image/png"
       sizes="32x32"
-      href="../ico//favicon-32x32.png"
+      href="../ico/favicon-32x32.png"
     />
     <link
       rel="icon"
       type="image/png"
       sizes="96x96"
-      href="../ico//favicon-96x96.png"
+      href="../ico/favicon-96x96.png"
     />
     <link
       rel="icon"
       type="image/png"
       sizes="16x16"
-      href="../ico//favicon-16x16.png"
+      href="../ico/favicon-16x16.png"
     />
-    <link rel="manifest" href="../ico//manifest.json" />
+    <link rel="manifest" href="../ico/manifest.json" />
     <meta name="msapplication-TileColor" content="#ffffff" />
     <meta name="msapplication-TileImage" content="./ico/ms-icon-144x144.png" />
     <meta name="theme-color" content="#ffffff" />
@@ -99,13 +99,13 @@
         <div class="grid grid-2 stagger">
           <div class="stat-card">
             <div class="stat-icon blue">📈</div>
-            <div class="stat-value">24</div>
-            <div class="stat-label">Lượt xem tuần này</div>
+            <div class="stat-value" id="viewsLast7Days">—</div>
+            <div class="stat-label">Lượt xem trong 7 ngày</div>
           </div>
           <div class="stat-card">
             <div class="stat-icon green">⭐</div>
-            <div class="stat-value">5</div>
-            <div class="stat-label">Lưu hồ sơ</div>
+            <div class="stat-value" id="employerCount">—</div>
+            <div class="stat-label">Nhà tuyển dụng đã xem</div>
           </div>
         </div>
 
@@ -120,23 +120,7 @@
                   <th>Thời gian xem</th>
                 </tr>
               </thead>
-              <tbody>
-                <tr>
-                  <td><strong>FPT Software</strong></td>
-                  <td>CNTT / Phần mềm</td>
-                  <td>Vừa xong</td>
-                </tr>
-                <tr>
-                  <td><strong>Momo</strong></td>
-                  <td>Tài chính / Fintech</td>
-                  <td>2 giờ trước</td>
-                </tr>
-                <tr>
-                  <td><strong>Shopee Việt Nam</strong></td>
-                  <td>Thương mại điện tử</td>
-                  <td>Hôm qua</td>
-                </tr>
-              </tbody>
+              <tbody id="profileViewsList"><tr><td colspan="3" class="text-center">Đang tải...</td></tr></tbody>
             </table>
           </div>
         </div>
@@ -148,10 +132,40 @@
     <script type="module" src="../js/app.js"></script>
     <script src="../js/navbar.js"></script>
     <script type="module">
-      const user = window.window.Auth.requireAuth(["candidate"]);
+      const user = window.Auth.requireAuth(["candidate"]);
       if (!user) throw "redirect";
       window.App.renderSidebar("candidate", "profile_views");
       BadgeNotifier.markSeenProfileViews(user.id);
+
+      const list = document.getElementById("profileViewsList");
+      const viewsLast7Days = document.getElementById("viewsLast7Days");
+      const employerCount = document.getElementById("employerCount");
+      const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+      })[char]);
+
+      async function loadProfileViews() {
+        try {
+          const views = await window.DB.getProfileViewsByCandidate(user.id);
+          const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+          viewsLast7Days.textContent = views.filter((view) => new Date(view.viewedAt).getTime() >= weekAgo).length;
+          employerCount.textContent = new Set(views.map((view) => view.employerId)).size;
+          if (!views.length) {
+            list.innerHTML = '<tr><td colspan="3" class="text-center">Chưa có nhà tuyển dụng nào xem hồ sơ của bạn.</td></tr>';
+            return;
+          }
+          list.innerHTML = views.map((view) => `<tr>
+            <td><strong>${escapeHtml(view.companyName || 'Nhà tuyển dụng')}</strong></td>
+            <td>${escapeHtml(view.industry || 'Chưa cập nhật')}</td>
+            <td>${new Date(view.viewedAt).toLocaleString('vi-VN')}</td>
+          </tr>`).join('');
+        } catch (error) {
+          console.error('Không tải được lượt xem hồ sơ:', error);
+          list.innerHTML = '<tr><td colspan="3" class="text-center text-danger">Không tải được lượt xem. Hãy kiểm tra backend và migration SQL.</td></tr>';
+        }
+      }
+
+      loadProfileViews();
     </script>
   </body>
 </html>

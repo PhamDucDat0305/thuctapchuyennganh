@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="vi">
   <head>
     <meta charset="UTF-8" />
@@ -6,73 +6,73 @@
     <link
       rel="apple-touch-icon"
       sizes="57x57"
-      href="../ico//apple-icon-57x57.png"
+      href="../ico/apple-icon-57x57.png"
     />
     <link
       rel="apple-touch-icon"
       sizes="60x60"
-      href="../ico//apple-icon-60x60.png"
+      href="../ico/apple-icon-60x60.png"
     />
     <link
       rel="apple-touch-icon"
       sizes="72x72"
-      href="../ico//apple-icon-72x72.png"
+      href="../ico/apple-icon-72x72.png"
     />
     <link
       rel="apple-touch-icon"
       sizes="76x76"
-      href="../ico//apple-icon-76x76.png"
+      href="../ico/apple-icon-76x76.png"
     />
     <link
       rel="apple-touch-icon"
       sizes="114x114"
-      href="../ico//apple-icon-114x114.png"
+      href="../ico/apple-icon-114x114.png"
     />
     <link
       rel="apple-touch-icon"
       sizes="120x120"
-      href="../ico//apple-icon-120x120.png"
+      href="../ico/apple-icon-120x120.png"
     />
     <link
       rel="apple-touch-icon"
       sizes="144x144"
-      href="../ico//apple-icon-144x144.png"
+      href="../ico/apple-icon-144x144.png"
     />
     <link
       rel="apple-touch-icon"
       sizes="152x152"
-      href="../ico//apple-icon-152x152.png"
+      href="../ico/apple-icon-152x152.png"
     />
     <link
       rel="apple-touch-icon"
       sizes="180x180"
-      href="../ico//apple-icon-180x180.png"
+      href="../ico/apple-icon-180x180.png"
     />
     <link
       rel="icon"
       type="image/png"
       sizes="192x192"
-      href="../ico//android-icon-192x192.png"
+      href="../ico/android-icon-192x192.png"
     />
     <link
       rel="icon"
       type="image/png"
       sizes="32x32"
-      href="../ico//favicon-32x32.png"
+      href="../ico/favicon-32x32.png"
     />
     <link
       rel="icon"
       type="image/png"
       sizes="96x96"
-      href="../ico//favicon-96x96.png"
+      href="../ico/favicon-96x96.png"
     />
     <link
       rel="icon"
       type="image/png"
       sizes="16x16"
-      href="../ico//favicon-16x16.png"
+      href="../ico/favicon-16x16.png"
     />
-    <link rel="manifest" href="../ico//manifest.json" />
+    <link rel="manifest" href="../ico/manifest.json" />
     <meta name="msapplication-TileColor" content="#ffffff" />
     <meta name="msapplication-TileImage" content="./ico/ms-icon-144x144.png" />
     <meta name="theme-color" content="#ffffff" />
@@ -104,45 +104,14 @@
               <tr>
                 <th>Công ty</th>
                 <th>Vị trí đề xuất</th>
+                <th>Lời nhắn</th>
                 <th>Ngày gửi</th>
                 <th>Trạng thái</th>
                 <th>Hành động</th>
               </tr>
             </thead>
-            <tbody>
-              <tr>
-                <td>
-                  <div class="flex" style="gap: 12px">
-                    <div class="avatar-initial-sm">T</div>
-                    <div><strong>Techcombank</strong></div>
-                  </div>
-                </td>
-                <td>Senior Frontend Developer</td>
-                <td>Hôm nay</td>
-                <td><span class="badge badge-warning">Chờ phản hồi</span></td>
-                <td>
-                  <button class="btn btn-sm btn-primary">Chấp nhận</button>
-                  <button class="btn btn-sm btn-light">Từ chối</button>
-                </td>
-              </tr>
-              <tr>
-                <td>
-                  <div class="flex" style="gap: 12px">
-                    <div class="avatar-initial-sm" style="background: #10b981">
-                      V
-                    </div>
-                    <div><strong>VNG Corporation</strong></div>
-                  </div>
-                </td>
-                <td>React Developer</td>
-                <td>3 ngày trước</td>
-                <td><span class="badge badge-success">Đã đồng ý</span></td>
-                <td>
-                  <button class="btn btn-sm btn-light" disabled>
-                    Đã xử lý
-                  </button>
-                </td>
-              </tr>
+            <tbody id="inviteList">
+              <tr><td colspan="6" class="text-center">Đang tải lời mời...</td></tr>
             </tbody>
           </table>
         </div>
@@ -154,10 +123,65 @@
     <script type="module" src="../js/app.js"></script>
     <script src="../js/navbar.js"></script>
     <script type="module">
-      const user = window.window.Auth.requireAuth(["candidate"]);
+      const user = window.Auth.requireAuth(["candidate"]);
       if (!user) throw "redirect";
       window.App.renderSidebar("candidate", "invites");
       BadgeNotifier.markSeenInvites(user.id);
+
+      const inviteList = document.getElementById("inviteList");
+      const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+      })[char]);
+
+      function formatDate(value) {
+        return value ? new Date(value).toLocaleDateString("vi-VN") : "—";
+      }
+
+      async function renderInvites() {
+        inviteList.innerHTML = '<tr><td colspan="6" class="text-center">Đang tải lời mời...</td></tr>';
+        try {
+          const invites = await window.DB.getInvitesByCandidate(user.id);
+          if (!invites.length) {
+            inviteList.innerHTML = '<tr><td colspan="6" class="text-center">Bạn chưa có lời mời kết nối nào.</td></tr>';
+            return;
+          }
+          inviteList.innerHTML = invites.map((invite) => {
+            const status = {
+              pending: ['Chờ phản hồi', 'badge-warning'],
+              accepted: ['Đã đồng ý', 'badge-success'],
+              rejected: ['Đã từ chối', 'badge-neutral'],
+            }[invite.status] || ['Không xác định', 'badge-neutral'];
+            const actions = invite.status === 'pending'
+              ? `<button class="btn btn-sm btn-primary" onclick="respondToInvite(${Number(invite.id)}, 'accepted')">Chấp nhận</button>
+                 <button class="btn btn-sm btn-light" onclick="respondToInvite(${Number(invite.id)}, 'rejected')">Từ chối</button>`
+              : '<button class="btn btn-sm btn-light" disabled>Đã xử lý</button>';
+            return `<tr>
+              <td><strong>${escapeHtml(invite.companyName || 'Nhà tuyển dụng')}</strong></td>
+              <td>${escapeHtml(invite.jobTitle || 'Lời mời kết nối')}</td>
+              <td>${escapeHtml(invite.message || '—')}</td>
+              <td>${formatDate(invite.createdAt)}</td>
+              <td><span class="badge ${status[1]}">${status[0]}</span></td>
+              <td>${actions}</td>
+            </tr>`;
+          }).join('');
+        } catch (error) {
+          console.error('Không tải được lời mời:', error);
+          inviteList.innerHTML = '<tr><td colspan="6" class="text-center text-danger">Không tải được lời mời. Hãy kiểm tra backend và migration SQL.</td></tr>';
+        }
+      }
+
+      window.respondToInvite = async function(inviteId, status) {
+        try {
+          await window.DB.updateInviteStatus(inviteId, status);
+          Toast.success(status === 'accepted' ? 'Đã chấp nhận lời mời.' : 'Đã từ chối lời mời.');
+          await renderInvites();
+        } catch (error) {
+          console.error('Không cập nhật được lời mời:', error);
+          Toast.error(error.message || 'Không cập nhật được lời mời.');
+        }
+      };
+
+      renderInvites();
     </script>
   </body>
 </html>

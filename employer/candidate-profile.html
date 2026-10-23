@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+    <title>Hồ sơ ứng viên — JobViệt</title>
+    <link rel="stylesheet" href="../css/styles.css" />
+    <link rel="stylesheet" href="../css/navbar.css" />
+    <link rel="stylesheet" href="../css/pages/dashboard.css" />
+    <link rel="stylesheet" href="../css/pages/employer.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" />
+  </head>
+  <body>
+    <div id="navbar-placeholder"></div>
+    <div class="layout-sidebar">
+      <aside class="sidebar" id="sidebar"></aside>
+      <main class="content-area">
+        <div class="content-header">
+          <h1><i class="fa-solid fa-user-tie"></i> Hồ sơ ứng viên</h1>
+          <p>Thông tin hồ sơ ứng viên</p>
+        </div>
+        <p id="profileViewStatus" class="text-center" role="status" style="margin-bottom:12px"></p>
+        <div id="candidateProfile" class="card" style="max-width:900px;margin:0 auto">
+          <p class="text-center">Đang tải hồ sơ...</p>
+        </div>
+      </main>
+    </div>
+    <script type="module" src="../js/db.js"></script>
+    <script type="module" src="../js/auth.js"></script>
+    <script src="../js/notifications.js"></script>
+    <script type="module" src="../js/app.js"></script>
+    <script src="../js/navbar.js"></script>
+    <script type="module">
+      const employer = window.Auth.requireAuth(["employer"]);
+      if (!employer) throw "redirect";
+      window.App.renderSidebar("employer", "applicants");
+
+      const candidateId = new URLSearchParams(location.search).get("id");
+      const container = document.getElementById("candidateProfile");
+      const viewStatus = document.getElementById("profileViewStatus");
+      const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+      })[char]);
+
+      async function loadProfile() {
+        if (!candidateId || !/^[1-9]\d*$/.test(candidateId)) {
+          container.innerHTML = '<p class="text-center text-danger">Mã ứng viên không hợp lệ.</p>';
+          return;
+        }
+        try {
+          const candidate = await window.DB.getUserById(candidateId);
+          if (!candidate || candidate.role !== "candidate") {
+            container.innerHTML = '<p class="text-center">Không tìm thấy hồ sơ ứng viên.</p>';
+            return;
+          }
+          try {
+            await window.DB.recordProfileView(employer.id, candidate.id);
+            viewStatus.textContent = "Lượt xem hồ sơ đã được ghi nhận.";
+            viewStatus.className = "text-center text-success";
+          } catch (error) {
+            console.warn("Không ghi được lượt xem hồ sơ:", error);
+            viewStatus.textContent = "Không ghi được lượt xem hồ sơ. Hãy kiểm tra log backend và bảng dbo.profile_views.";
+            viewStatus.className = "text-center text-danger";
+          }
+
+          const skills = Array.isArray(candidate.skills) ? candidate.skills : [];
+          container.innerHTML = `
+            <div class="flex" style="gap:16px;align-items:center;margin-bottom:24px">
+              <div class="avatar" style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,var(--primary),#38bdf8);display:flex;align-items:center;justify-content:center;font-weight:bold;color:white;font-size:1.5rem">${escapeHtml(candidate.fullName?.[0] || 'U')}</div>
+              <div><h2>${escapeHtml(candidate.fullName || 'Ứng viên')}</h2><p style="color:var(--text-light)">${escapeHtml(candidate.title || 'Chưa cập nhật chức danh')}</p></div>
+            </div>
+            <div class="grid grid-2" style="gap:16px;margin-bottom:20px">
+              <div><strong>Khu vực:</strong> ${escapeHtml(candidate.location || 'Chưa cập nhật')}</div>
+              <div><strong>Kinh nghiệm:</strong> ${escapeHtml(candidate.experience || 'Chưa cập nhật')}</div>
+              <div><strong>Email:</strong> ${escapeHtml(candidate.email || 'Chỉ hiển thị sau khi ứng viên ứng tuyển')}</div>
+              <div><strong>Điện thoại:</strong> ${escapeHtml(candidate.phone || 'Chưa cung cấp')}</div>
+            </div>
+            <div><strong>Kỹ năng</strong><div class="flex" style="gap:8px;flex-wrap:wrap;margin-top:10px">
+              ${skills.length ? skills.map((skill) => `<span class="badge badge-neutral">${escapeHtml(skill)}</span>`).join('') : '<span>Chưa cập nhật kỹ năng</span>'}
+            </div></div>
+            <div class="flex" style="gap:10px;margin-top:24px">
+              <button class="btn btn-primary" onclick="window.App.openChat('${candidate.id}')"><i class="fa-solid fa-comment"></i> Nhắn tin</button>
+              <a class="btn btn-outline" href="applicants.html">Quay lại danh sách</a>
+            </div>`;
+        } catch (error) {
+          console.error("Không tải được hồ sơ ứng viên:", error);
+          container.innerHTML = '<p class="text-center text-danger">Không tải được hồ sơ. Hãy thử lại.</p>';
+        }
+      }
+
+      loadProfile();
+    </script>
+  </body>
+</html>

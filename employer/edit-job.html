@@ -6,73 +6,73 @@
     <link
       rel="apple-touch-icon"
       sizes="57x57"
-      href="../ico//apple-icon-57x57.png"
+      href="../ico/apple-icon-57x57.png"
     />
     <link
       rel="apple-touch-icon"
       sizes="60x60"
-      href="../ico//apple-icon-60x60.png"
+      href="../ico/apple-icon-60x60.png"
     />
     <link
       rel="apple-touch-icon"
       sizes="72x72"
-      href="../ico//apple-icon-72x72.png"
+      href="../ico/apple-icon-72x72.png"
     />
     <link
       rel="apple-touch-icon"
       sizes="76x76"
-      href="../ico//apple-icon-76x76.png"
+      href="../ico/apple-icon-76x76.png"
     />
     <link
       rel="apple-touch-icon"
       sizes="114x114"
-      href="../ico//apple-icon-114x114.png"
+      href="../ico/apple-icon-114x114.png"
     />
     <link
       rel="apple-touch-icon"
       sizes="120x120"
-      href="../ico//apple-icon-120x120.png"
+      href="../ico/apple-icon-120x120.png"
     />
     <link
       rel="apple-touch-icon"
       sizes="144x144"
-      href="../ico//apple-icon-144x144.png"
+      href="../ico/apple-icon-144x144.png"
     />
     <link
       rel="apple-touch-icon"
       sizes="152x152"
-      href="../ico//apple-icon-152x152.png"
+      href="../ico/apple-icon-152x152.png"
     />
     <link
       rel="apple-touch-icon"
       sizes="180x180"
-      href="../ico//apple-icon-180x180.png"
+      href="../ico/apple-icon-180x180.png"
     />
     <link
       rel="icon"
       type="image/png"
       sizes="192x192"
-      href="../ico//android-icon-192x192.png"
+      href="../ico/android-icon-192x192.png"
     />
     <link
       rel="icon"
       type="image/png"
       sizes="32x32"
-      href="../ico//favicon-32x32.png"
+      href="../ico/favicon-32x32.png"
     />
     <link
       rel="icon"
       type="image/png"
       sizes="96x96"
-      href="../ico//favicon-96x96.png"
+      href="../ico/favicon-96x96.png"
     />
     <link
       rel="icon"
       type="image/png"
       sizes="16x16"
-      href="../ico//favicon-16x16.png"
+      href="../ico/favicon-16x16.png"
     />
-    <link rel="manifest" href="../ico//manifest.json" />
+    <link rel="manifest" href="../ico/manifest.json" />
     <meta name="msapplication-TileColor" content="#ffffff" />
     <meta name="msapplication-TileImage" content="./ico/ms-icon-144x144.png" />
     <meta name="theme-color" content="#ffffff" />
@@ -108,32 +108,35 @@
     <script src="../js/navbar.js"></script>
     <script type="module">
       document.addEventListener("DOMContentLoaded", async () => {
+        const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({
+          "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+        })[char]);
         const user = window.Auth.requireAuth(["employer"]);
         if (!user) return;
         window.App.renderSidebar("employer", "myjobs");
         const jobId = new URLSearchParams(location.search).get("id");
-        const job = await window.DB.getJobById(jobId);
+        const job = await window.DB.getEmployerJobById(jobId);
         
         const formContainer = document.getElementById("editForm");
         
-        if (!job || job.createdBy !== user.id) {
+        if (!job) {
           formContainer.innerHTML = "<p>Không tìm thấy tin</p>";
         } else {
           formContainer.innerHTML = `
           <form onsubmit="saveJob(event)">
-            <div class="form-group"><label class="form-label">Tiêu đề</label><input class="form-input" id="title" value="${job.title}" required></div>
+            <div class="form-group"><label class="form-label">Tiêu đề</label><input class="form-input" id="title" value="${escapeHtml(job.title)}" required></div>
             <div class="form-row">
-              <div class="form-group"><label class="form-label">Mức lương</label><input class="form-input" id="salary" value="${job.salary}" required></div>
-              <div class="form-group"><label class="form-label">Địa điểm</label><input class="form-input" id="location" value="${job.location}" required></div>
+              <div class="form-group"><label class="form-label">Mức lương</label><input class="form-input" id="salary" value="${escapeHtml(job.salary)}" required></div>
+              <div class="form-group"><label class="form-label">Địa điểm</label><input class="form-input" id="location" value="${escapeHtml(job.location)}" required></div>
             </div>
             <div class="form-row">
               <div class="form-group"><label class="form-label">Loại hình</label><select class="form-select" id="type"><option ${job.type === "full-time" ? "selected" : ""}>full-time</option><option ${job.type === "part-time" ? "selected" : ""}>part-time</option></select></div>
               <div class="form-group"><label class="form-label">Kinh nghiệm</label><select class="form-select" id="experience"><option ${job.experience === "0-1 năm" ? "selected" : ""}>0-1 năm</option><option ${job.experience === "1-3 năm" ? "selected" : ""}>1-3 năm</option><option ${job.experience === "2-5 năm" ? "selected" : ""}>2-5 năm</option><option ${job.experience === "5+ năm" ? "selected" : ""}>5+ năm</option></select></div>
             </div>
             <div class="form-group"><label class="form-label">Danh mục</label><select class="form-select" id="category"><option ${job.category === "Công nghệ" ? "selected" : ""}>Công nghệ</option><option ${job.category === "Marketing" ? "selected" : ""}>Marketing</option><option ${job.category === "Thiết kế" ? "selected" : ""}>Thiết kế</option><option ${job.category === "Kinh doanh" ? "selected" : ""}>Kinh doanh</option><option ${job.category === "Hành chính" ? "selected" : ""}>Hành chính</option><option ${job.category === "Tài chính" ? "selected" : ""}>Tài chính</option></select></div>
-            <div class="form-group"><label class="form-label">Mô tả</label><textarea class="form-textarea" id="description" required>${job.description}</textarea></div>
-            <div class="form-group"><label class="form-label">Yêu cầu</label><textarea class="form-textarea" id="requirements" required>${job.requirements}</textarea></div>
-            <div class="form-group"><label class="form-label">Quyền lợi</label><textarea class="form-textarea" id="benefits">${job.benefits || ""}</textarea></div>
+            <div class="form-group"><label class="form-label">Mô tả</label><textarea class="form-textarea" id="description" required>${escapeHtml(job.description)}</textarea></div>
+            <div class="form-group"><label class="form-label">Yêu cầu</label><textarea class="form-textarea" id="requirements" required>${escapeHtml(job.requirements)}</textarea></div>
+            <div class="form-group"><label class="form-label">Quyền lợi</label><textarea class="form-textarea" id="benefits">${escapeHtml(job.benefits)}</textarea></div>
             <div class="flex" style="gap:12px"><button type="submit" class="btn btn-primary btn-large"><i class="fa-solid fa-floppy-disk"></i> Lưu thay đổi</button><a href="my-jobs.html" class="btn btn-secondary btn-large">Hủy</a></div>
           </form>`;
 

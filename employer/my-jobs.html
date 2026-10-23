@@ -6,73 +6,73 @@
     <link
       rel="apple-touch-icon"
       sizes="57x57"
-      href="../ico//apple-icon-57x57.png"
+      href="../ico/apple-icon-57x57.png"
     />
     <link
       rel="apple-touch-icon"
       sizes="60x60"
-      href="../ico//apple-icon-60x60.png"
+      href="../ico/apple-icon-60x60.png"
     />
     <link
       rel="apple-touch-icon"
       sizes="72x72"
-      href="../ico//apple-icon-72x72.png"
+      href="../ico/apple-icon-72x72.png"
     />
     <link
       rel="apple-touch-icon"
       sizes="76x76"
-      href="../ico//apple-icon-76x76.png"
+      href="../ico/apple-icon-76x76.png"
     />
     <link
       rel="apple-touch-icon"
       sizes="114x114"
-      href="../ico//apple-icon-114x114.png"
+      href="../ico/apple-icon-114x114.png"
     />
     <link
       rel="apple-touch-icon"
       sizes="120x120"
-      href="../ico//apple-icon-120x120.png"
+      href="../ico/apple-icon-120x120.png"
     />
     <link
       rel="apple-touch-icon"
       sizes="144x144"
-      href="../ico//apple-icon-144x144.png"
+      href="../ico/apple-icon-144x144.png"
     />
     <link
       rel="apple-touch-icon"
       sizes="152x152"
-      href="../ico//apple-icon-152x152.png"
+      href="../ico/apple-icon-152x152.png"
     />
     <link
       rel="apple-touch-icon"
       sizes="180x180"
-      href="../ico//apple-icon-180x180.png"
+      href="../ico/apple-icon-180x180.png"
     />
     <link
       rel="icon"
       type="image/png"
       sizes="192x192"
-      href="../ico//android-icon-192x192.png"
+      href="../ico/android-icon-192x192.png"
     />
     <link
       rel="icon"
       type="image/png"
       sizes="32x32"
-      href="../ico//favicon-32x32.png"
+      href="../ico/favicon-32x32.png"
     />
     <link
       rel="icon"
       type="image/png"
       sizes="96x96"
-      href="../ico//favicon-96x96.png"
+      href="../ico/favicon-96x96.png"
     />
     <link
       rel="icon"
       type="image/png"
       sizes="16x16"
-      href="../ico//favicon-16x16.png"
+      href="../ico/favicon-16x16.png"
     />
-    <link rel="manifest" href="../ico//manifest.json" />
+    <link rel="manifest" href="../ico/manifest.json" />
     <meta name="msapplication-TileColor" content="#ffffff" />
     <meta name="msapplication-TileImage" content="./ico/ms-icon-144x144.png" />
     <meta name="theme-color" content="#ffffff" />
@@ -109,6 +109,9 @@
     <script src="../js/navbar.js"></script>
     <script type="module">
       document.addEventListener("DOMContentLoaded", () => {
+        const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({
+          "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+        })[char]);
         const user = window.Auth.requireAuth(["employer"]);
         if (!user) return;
         window.App.renderSidebar("employer", "myjobs");
@@ -116,10 +119,9 @@
         window.render = async function() {
           const listContainer = document.getElementById("jobList");
           listContainer.innerHTML = '<div style="text-align:center; padding: 20px;">Đang tải danh sách...</div>';
-          
-          let jobs = await window.DB.getJobsByEmployer(user.id);
-          jobs = jobs.reverse();
-          
+
+          try {
+          const jobs = await window.DB.getJobsByEmployer(user.id);
           if (!jobs.length) {
             listContainer.innerHTML =
               '<div class="empty-state"><div class="empty-icon"><i class="fa-solid fa-file-lines"></i></div><h3>Chưa đăng tin nào</h3><a href="post-job.html" class="btn btn-primary mt-2">Đăng tin ngay</a></div>';
@@ -131,16 +133,16 @@
             const apps = await window.DB.getApplicationsByJob(j.id);
             const appCount = apps.length;
             rows.push(`<tr>
-              <td data-label="Tiêu đề"><strong>${j.title}</strong><br><span class="badge badge-neutral" style="margin-top:4px">${j.type}</span></td>
-              <td data-label="Lương">${j.salary}</td>
-              <td data-label="Địa điểm">${j.location}</td>
+              <td data-label="Tiêu đề"><strong>${escapeHtml(j.title)}</strong><br><span class="badge badge-neutral" style="margin-top:4px">${escapeHtml(j.type)}</span> <span class="badge ${j.status === 'active' ? 'badge-primary' : 'badge-neutral'}">${escapeHtml(j.status)}</span></td>
+              <td data-label="Lương">${escapeHtml(j.salary)}</td>
+              <td data-label="Địa điểm">${escapeHtml(j.location)}</td>
               <td data-label="Ứng viên"><a href="job-applicants.html?id=${j.id}" class="badge badge-info" style="cursor:pointer">${appCount} CV</a></td>
               <td data-label="Lượt xem"><i class="fa-solid fa-eye"></i> ${j.views || 0}</td>
               <td data-label="Ngày đăng">${window.App.formatDate(j.createdAt)}</td>
               <td data-label="Thao tác"><div class="flex" style="gap:6px">
                 <a href="edit-job.html?id=${j.id}" class="btn btn-sm btn-secondary"><i class="fa-solid fa-pen-to-square"></i></a>
                 <a href="job-applicants.html?id=${j.id}" class="btn btn-sm btn-primary"><i class="fa-solid fa-users"></i></a>
-                <button class="btn btn-sm btn-danger" onclick="deleteJob('${j.id}')"><i class="fa-solid fa-trash-can"></i></button>
+                ${j.status === 'active' ? `<button class="btn btn-sm btn-danger" onclick="deleteJob('${j.id}')" title="Đóng tin"><i class="fa-solid fa-ban"></i></button>` : '<span>Đã đóng</span>'}
               </div></td>
             </tr>`);
           }
@@ -150,13 +152,20 @@
           <thead><tr><th>Tiêu đề</th><th>Lương</th><th>Địa điểm</th><th>Ứng viên</th><th>Lượt xem</th><th>Ngày đăng</th><th>Thao tác</th></tr></thead>
           <tbody>${rows.join("")}</tbody>
         </table></div>`;
+          } catch (error) {
+            listContainer.innerHTML = `<div class="empty-state"><h3>Không tải được danh sách tin</h3><p>${escapeHtml(error.message)}</p></div>`;
+          }
         };
 
         window.deleteJob = async function(id) {
-          if (!confirm("Bạn có chắc muốn xóa tin này?")) return;
-          await window.DB.deleteJob(id);
-          Toast.success("Đã xóa tin tuyển dụng");
-          window.render();
+          if (!confirm("Đóng tin tuyển dụng này? Tin sẽ không còn hiển thị công khai.")) return;
+          try {
+            await window.DB.deleteJob(id);
+            Toast.success("Đã đóng tin tuyển dụng");
+            window.render();
+          } catch (error) {
+            Toast.error("Không thể đóng tin: " + error.message);
+          }
         };
 
         window.render();

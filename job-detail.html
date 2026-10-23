@@ -159,6 +159,9 @@
     <script src="js/navbar.js"></script>
     <script type="module">
       document.addEventListener("DOMContentLoaded", async () => {
+        const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({
+          "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+        })[char]);
         const urlParams = new URLSearchParams(window.location.search);
         const jobId = urlParams.get("id");
 
@@ -190,24 +193,24 @@
 
         document.getElementById("jobDetail").innerHTML = `
         <div class="job-header animate-fade-up">
-          <h1 style="font-size: 2rem; margin-bottom: 12px; color: var(--text);">${job.title}</h1>
-          <div style="font-size: 1.2rem; color: var(--primary); font-weight: 600; margin-bottom: 20px;">${job.companyName}</div>
+          <h1 style="font-size: 2rem; margin-bottom: 12px; color: var(--text);">${escapeHtml(job.title)}</h1>
+          <div style="font-size: 1.2rem; color: var(--primary); font-weight: 600; margin-bottom: 20px;">${escapeHtml(job.companyName)}</div>
           <div class="grid grid-3">
-            <div class="meta-item"><i class="fa-solid fa-location-dot text-danger"></i> ${job.location}</div>
-            <div class="meta-item"><i class="fa-solid fa-money-bill-wave text-success"></i> ${job.salary}</div>
+            <div class="meta-item"><i class="fa-solid fa-location-dot text-danger"></i> ${escapeHtml(job.location)}</div>
+            <div class="meta-item"><i class="fa-solid fa-money-bill-wave text-success"></i> ${escapeHtml(job.salary)}</div>
             <div class="meta-item"><i class="fa-solid fa-clock text-info"></i> ${job.type === "full-time" ? "Toàn thời gian" : "Bán thời gian"}</div>
           </div>
         </div>
 
         <div class="job-body animate-fade-up delay-1">
           <div class="section-title"><i class="fa-solid fa-file-lines"></i> Mô tả công việc</div>
-          <p style="line-height: 1.8; color: var(--text); white-space: pre-line;">${job.description}</p>
+          <p style="line-height: 1.8; color: var(--text); white-space: pre-line;">${escapeHtml(job.description)}</p>
 
           <div class="section-title"><i class="fa-solid fa-list-check"></i> Yêu cầu ứng viên</div>
-          <p style="line-height: 1.8; color: var(--text); white-space: pre-line;">${job.requirements}</p>
+          <p style="line-height: 1.8; color: var(--text); white-space: pre-line;">${escapeHtml(job.requirements)}</p>
 
           <div class="section-title"><i class="fa-solid fa-gift"></i> Quyền lợi</div>
-          <p style="line-height: 1.8; color: var(--text); white-space: pre-line;">${job.benefits}</p>
+          <p style="line-height: 1.8; color: var(--text); white-space: pre-line;">${escapeHtml(job.benefits)}</p>
 
           <div class="apply-section">
             <button id="saveBtn" class="btn btn-large btn-outline" onclick="toggleSave('${job.id}')">

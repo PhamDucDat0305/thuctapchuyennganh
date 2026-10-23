@@ -6,73 +6,73 @@
     <link
       rel="apple-touch-icon"
       sizes="57x57"
-      href="../ico//apple-icon-57x57.png"
+      href="../ico/apple-icon-57x57.png"
     />
     <link
       rel="apple-touch-icon"
       sizes="60x60"
-      href="../ico//apple-icon-60x60.png"
+      href="../ico/apple-icon-60x60.png"
     />
     <link
       rel="apple-touch-icon"
       sizes="72x72"
-      href="../ico//apple-icon-72x72.png"
+      href="../ico/apple-icon-72x72.png"
     />
     <link
       rel="apple-touch-icon"
       sizes="76x76"
-      href="../ico//apple-icon-76x76.png"
+      href="../ico/apple-icon-76x76.png"
     />
     <link
       rel="apple-touch-icon"
       sizes="114x114"
-      href="../ico//apple-icon-114x114.png"
+      href="../ico/apple-icon-114x114.png"
     />
     <link
       rel="apple-touch-icon"
       sizes="120x120"
-      href="../ico//apple-icon-120x120.png"
+      href="../ico/apple-icon-120x120.png"
     />
     <link
       rel="apple-touch-icon"
       sizes="144x144"
-      href="../ico//apple-icon-144x144.png"
+      href="../ico/apple-icon-144x144.png"
     />
     <link
       rel="apple-touch-icon"
       sizes="152x152"
-      href="../ico//apple-icon-152x152.png"
+      href="../ico/apple-icon-152x152.png"
     />
     <link
       rel="apple-touch-icon"
       sizes="180x180"
-      href="../ico//apple-icon-180x180.png"
+      href="../ico/apple-icon-180x180.png"
     />
     <link
       rel="icon"
       type="image/png"
       sizes="192x192"
-      href="../ico//android-icon-192x192.png"
+      href="../ico/android-icon-192x192.png"
     />
     <link
       rel="icon"
       type="image/png"
       sizes="32x32"
-      href="../ico//favicon-32x32.png"
+      href="../ico/favicon-32x32.png"
     />
     <link
       rel="icon"
       type="image/png"
       sizes="96x96"
-      href="../ico//favicon-96x96.png"
+      href="../ico/favicon-96x96.png"
     />
     <link
       rel="icon"
       type="image/png"
       sizes="16x16"
-      href="../ico//favicon-16x16.png"
+      href="../ico/favicon-16x16.png"
     />
-    <link rel="manifest" href="../ico//manifest.json" />
+    <link rel="manifest" href="../ico/manifest.json" />
     <meta name="msapplication-TileColor" content="#ffffff" />
     <meta name="msapplication-TileImage" content="./ico/ms-icon-144x144.png" />
     <meta name="theme-color" content="#ffffff" />
@@ -159,6 +159,13 @@
 
         const apps = await window.DB.getApplicationsByCandidate(user.id);
         const saved = await window.DB.getSavedJobs(user.id);
+        let profileViews = [];
+        try {
+          profileViews = await window.DB.getProfileViewsByCandidate(user.id);
+        } catch (error) {
+          // Dashboard vẫn hiển thị các thống kê khác nếu API lượt xem tạm thời lỗi.
+          console.warn("Không tải được thống kê lượt xem hồ sơ:", error);
+        }
 
         const interviewPromises = apps
           .filter((a) => a.status === "interview_scheduled")
@@ -170,8 +177,9 @@
         <div class="stat-card animate-fade-up"><div class="stat-icon blue"><i class="fa-solid fa-envelope-open-text"></i></div><div class="stat-value">${apps.length}</div><div class="stat-label">Đã ứng tuyển</div></div>
         <div class="stat-card animate-fade-up"><div class="stat-icon purple"><i class="fa-solid fa-calendar-days"></i></div><div class="stat-value">${interviews.length}</div><div class="stat-label">Lịch phỏng vấn</div></div>
         <div class="stat-card animate-fade-up"><div class="stat-icon green"><i class="fa-solid fa-circle-check"></i></div><div class="stat-value">${apps.filter((a) => a.status === "accepted").length}</div><div class="stat-label">Trúng tuyển</div></div>
-        <div class="stat-card animate-fade-up"><div class="stat-icon orange"><i class="fa-solid fa-hourglass-half"></i></div><div class="stat-value">${apps.filter((a) => a.status === "pending").length}</div><div class="stat-label">Đang chờ</div></div>
+        <div class="stat-card animate-fade-up"><div class="stat-icon orange"><i class="fa-solid fa-hourglass-half"></i></div><div class="stat-value">${apps.filter((a) => ["applied", "pending"].includes(a.status)).length}</div><div class="stat-label">Đang chờ</div></div>
         <div class="stat-card animate-fade-up"><div class="stat-icon red"><i class="fa-solid fa-heart"></i></div><div class="stat-value">${saved.length}</div><div class="stat-label">Đã lưu</div></div>
+        <a href="profile-views.html" class="stat-card animate-fade-up" style="color:inherit;text-decoration:none"><div class="stat-icon orange"><i class="fa-solid fa-eye"></i></div><div class="stat-value">${profileViews.length}</div><div class="stat-label">Lượt xem hồ sơ</div></a>
       `;
 
         // Upcoming interviews
@@ -192,6 +200,10 @@
         for (const a of recentApps) {
           const job = await window.DB.getJobById(a.jobId);
           const statusMap = {
+            applied: [
+              '<i class="fa-solid fa-hourglass-half"></i> Đang chờ',
+              "badge-warning",
+            ],
             pending: [
               '<i class="fa-solid fa-hourglass-half"></i> Đang chờ',
               "badge-warning",

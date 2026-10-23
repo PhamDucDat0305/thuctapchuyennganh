@@ -1,5 +1,11 @@
 /* ========== SHARED UTILITIES & NAVIGATION ========== */
 
+function escapeChatHtml(value) {
+  return String(value ?? "").replace(/[&<>"']/g, (char) => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+  })[char]);
+}
+
 /**
  * BadgeNotifier Module
  * Handles notification badges for different user roles
@@ -23,22 +29,14 @@ const BadgeNotifier = {
    * Specifically for candidate invites
    */
   markSeenInvites(userId) {
-    const totalKey = `notif_invites_total_${userId}`;
-    const seenKey = `notif_invites_seen_${userId}`;
-    const total = parseInt(localStorage.getItem(totalKey) || "2");
-    localStorage.setItem(seenKey, String(total));
-    this._setBadgeCount("invites", 0);
+    this.markSeen(userId, "invites");
   },
 
   /**
    * Specifically for candidate profile views
    */
   markSeenProfileViews(userId) {
-    const totalKey = `notif_pv_total_${userId}`;
-    const seenKey = `notif_pv_seen_${userId}`;
-    const total = parseInt(localStorage.getItem(totalKey) || "3");
-    localStorage.setItem(seenKey, String(total));
-    this._setBadgeCount("profile_views", 0);
+    this.markSeen(userId, "profile_views");
   },
 
   _setBadgeCount(pageKey, count) {
@@ -109,14 +107,19 @@ const BadgeNotifier = {
       } catch (e) { return 0; }
     },
     async invites(userId) {
-      const total = parseInt(localStorage.getItem(`notif_invites_total_${userId}`) || "2");
-      const seen = parseInt(localStorage.getItem(`notif_invites_seen_${userId}`) || "0");
-      return Math.max(0, total - seen);
+      try {
+        // Lấy số lời mời đang chờ từ SQL Server qua API.
+        const invites = await window.DB.getInvitesByCandidate(userId);
+        return invites.filter(i => i.status === 'pending').length;
+      } catch (e) { return 0; }
     },
     async profile_views(userId) {
-      const total = parseInt(localStorage.getItem(`notif_pv_total_${userId}`) || "3");
-      const seen = parseInt(localStorage.getItem(`notif_pv_seen_${userId}`) || "0");
-      return Math.max(0, total - seen);
+      try {
+        // Lấy lịch sử lượt xem hồ sơ từ SQL Server qua API.
+        const lastSeen = BadgeNotifier.getLastSeen(userId, "profile_views");
+        const views = await window.DB.getProfileViewsByCandidate(userId);
+        return views.filter(v => new Date(v.viewedAt) > lastSeen).length;
+      } catch (e) { return 0; }
     }
   },
 
@@ -541,7 +544,26 @@ window.App = {
   },
 
   async _renderChatList(user, widget) {
-    const conversations = await window.DB.getConversations(user.id);
+    let conversations;
+    try {
+      conversations = await window.DB.getConversations(user.id);
+    } catch (error) {
+      console.error("Chat: could not load conversations", error);
+      widget.innerHTML = `
+        <div class="widget-header">
+          <div class="widget-header-title"><i class="fa-solid fa-comment-dots"></i> Tin nhắn</div>
+          <button class="widget-icon-btn" onclick="document.getElementById('chatWidget').classList.remove('active')" aria-label="Đóng"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="w-empty" role="alert">
+          <div>Không tải được hội thoại.</div>
+          <div style="margin-top:8px;font-size:12px">${escapeChatHtml(error.message || "Kiểm tra kết nối backend và bảng dbo.messages.")}</div>
+          <button class="widget-icon-btn" style="margin:12px auto 0" onclick="App._renderChatList(Auth.getCurrentUser(), document.getElementById('chatWidget'))">Thử lại</button>
+        </div>`;
+      return;
+    }
+    this._chatContacts = new Map(
+      conversations.filter((item) => item.contact).map((item) => [String(item.contact.id), item.contact]),
+    );
     const isDashboard = location.pathname.includes("/employer/") || location.pathname.includes("/candidate/");
     const msgUrl = (isDashboard ? "" : (user.role === "employer" ? "employer/" : "candidate/")) + "messages.html";
 
@@ -565,8 +587,8 @@ window.App = {
       <div class="w-conv-item" onclick="App.openChat('${c.contact.id}')">
         <div class="w-avatar">${initials}</div>
         <div class="w-info">
-          <div class="w-name">${c.contact.fullName || 'User'}</div>
-          <div class="w-preview ${c.unreadCount > 0 ? 'unread' : ''}">${c.lastMessage ? c.lastMessage.content : '...'}</div>
+          <div class="w-name">${escapeChatHtml(c.contact.fullName || 'User')}</div>
+          <div class="w-preview ${c.unreadCount > 0 ? 'unread' : ''}">${c.lastMessage ? escapeChatHtml(c.lastMessage.content) : '...'}</div>
         </div>
         ${c.unreadCount > 0 ? `<div class="w-badge">${c.unreadCount}</div>` : ''}
       </div>
@@ -581,27 +603,76 @@ window.App = {
     this._activeChatContact = contactId;
     widget.classList.add("active");
     
-    const contact = await window.DB.getUserById(contactId);
-    const messages = await window.DB.getMessages(user.id, contactId);
+    let contact;
+    let messages;
+    try {
+      contact = this._chatContacts?.get(String(contactId)) || await window.DB.getUserById(contactId);
+      messages = await window.DB.getMessages(user.id, contactId);
+      if (!contact) throw new Error("Không tìm thấy tài khoản đang trò chuyện.");
+    } catch (error) {
+      console.error("Chat: could not open conversation", error);
+      widget.innerHTML = `
+        <div class="widget-header">
+          <div class="widget-header-title">Tin nhắn</div>
+          <button class="widget-icon-btn" onclick="document.getElementById('chatWidget').classList.remove('active')" aria-label="Đóng"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="w-empty" role="alert">
+          <div>Không mở được cuộc trò chuyện.</div>
+          <div style="margin-top:8px;font-size:12px">${escapeChatHtml(error.message || "Kiểm tra kết nối backend.")}</div>
+          <button class="widget-icon-btn" style="margin:12px auto 0" onclick="App._renderChatList(Auth.getCurrentUser(), document.getElementById('chatWidget'))">Quay lại</button>
+        </div>`;
+      return;
+    }
+    this._activeChatCursor = messages.nextCursor;
+    this._activeChatHasMore = messages.hasMore;
     
     widget.innerHTML = `
       <div class="w-chat-header">
         <button onclick="App._renderChatList(Auth.getCurrentUser(), document.getElementById('chatWidget'))"><i class="fa-solid fa-chevron-left"></i></button>
-        <div class="w-chat-name">${contact.fullName || 'User'}</div>
+        <div class="w-chat-name">${escapeChatHtml(contact.fullName || 'User')}</div>
         <button onclick="document.getElementById('chatWidget').classList.remove('active')"><i class="fa-solid fa-xmark"></i></button>
       </div>
       <div class="w-msg-list" id="widgetMsgList">
-        ${messages.map(m => `<div class="w-msg ${m.senderId === user.id ? 'sent' : 'received'}">${m.content}</div>`).join("")}
+        ${messages.hasMore ? `<button type="button" id="widgetLoadOlder" onclick="App.loadOlderChatMessages('${contactId}')">Tải tin cũ hơn</button>` : ""}
+        ${messages.messages.map(m => `<div class="w-msg ${m.senderId === user.id ? 'sent' : 'received'}" data-message-id="${m.id}">${escapeChatHtml(m.content)}</div>`).join("")}
       </div>
       <form class="w-input-area" onsubmit="App.handleWidgetSend(event, '${contactId}')">
-        <input type="text" id="widgetInput" placeholder="Aa..." autocomplete="off">
+        <input type="text" id="widgetInput" maxlength="2000" placeholder="Aa..." autocomplete="off">
         <button type="submit"><i class="fa-solid fa-paper-plane"></i></button>
       </form>
     `;
 
     const list = document.getElementById("widgetMsgList");
     if (list) list.scrollTop = list.scrollHeight;
-    await window.DB.markAsRead(user.id, contactId);
+    try {
+      await window.DB.markAsRead(user.id, contactId);
+    } catch (error) {
+      console.error("Chat: could not mark conversation as read", error);
+    }
+  },
+
+  async loadOlderChatMessages(contactId) {
+    if (this._loadingOlderChat || !this._activeChatHasMore || !this._activeChatCursor || String(contactId) !== String(this._activeChatContact)) return;
+    const list = document.getElementById("widgetMsgList");
+    const button = document.getElementById("widgetLoadOlder");
+    const user = Auth.getCurrentUser();
+    if (!list || !button || !user) return;
+    this._loadingOlderChat = true;
+    button.disabled = true;
+    const oldHeight = list.scrollHeight;
+    const oldTop = list.scrollTop;
+    try {
+      const page = await window.DB.getMessages(user.id, contactId, this._activeChatCursor);
+      this._activeChatCursor = page.nextCursor;
+      this._activeChatHasMore = page.hasMore;
+      const markup = page.messages.map((m) => `<div class="w-msg ${m.senderId === user.id ? 'sent' : 'received'}" data-message-id="${m.id}">${escapeChatHtml(m.content)}</div>`).join("");
+      button.insertAdjacentHTML("afterend", markup);
+      button.hidden = !page.hasMore;
+      list.scrollTop = oldTop + (list.scrollHeight - oldHeight);
+    } finally {
+      this._loadingOlderChat = false;
+      if (button.isConnected) button.disabled = false;
+    }
   },
 
   async handleWidgetSend(event, toId) {
@@ -634,7 +705,9 @@ window.App = {
         if (this._activeChatContact) {
           const msgs = await window.DB.getMessages(user.id, this._activeChatContact);
           const list = document.getElementById("widgetMsgList");
-          if (list && msgs.length > list.children.length) this.openChat(this._activeChatContact);
+          const lastRenderedId = list?.querySelector(".w-msg:last-child")?.dataset.messageId;
+          const latestId = msgs.messages.at(-1)?.id;
+          if (list && latestId && String(latestId) !== lastRenderedId) this.openChat(this._activeChatContact);
         } else {
           this._renderChatList(user, widget);
         }

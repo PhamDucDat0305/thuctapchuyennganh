@@ -153,9 +153,11 @@
     ];
     
     const currentPage = location.pathname.split("/").pop() || "index.html";
-    const navLinksHTML = links.map(l => 
-      `<a href="${l.href}" class="${currentPage === l.href ? "active" : ""}">${l.label}</a>`
-    ).join("");
+    const navLinksHTML = links.map(l => {
+      // So sánh tên file cuối cùng của href với tên file hiện tại
+      const linkPage = l.href.split("/").pop();
+      return `<a href="${l.href}" class="${currentPage === linkPage ? "active" : ""}">${l.label}</a>`;
+    }).join("");
 
     const authAreaHTML = user ? buildProfileHTML(user) : buildLoginButtons();
 
@@ -267,13 +269,18 @@
       hamburger.addEventListener("click", () => navLinks.classList.toggle("open"));
     }
 
-    // Logout
+    // Logout — gọi Auth.logout() để đảm bảo Firebase session được xóa
     const logoutBtn = document.getElementById("navLogoutBtn");
     if (logoutBtn) {
       logoutBtn.addEventListener("click", () => {
-        localStorage.removeItem("currentUser");
-        sessionStorage.removeItem("loggedInUser");
-        location.href = resolveHref("index.html");
+        if (window.Auth && typeof window.Auth.logout === "function") {
+          window.Auth.logout();
+        } else {
+          // Fallback nếu Auth module chưa load
+          localStorage.removeItem("currentUser");
+          sessionStorage.removeItem("loggedInUser");
+          location.href = resolveHref("index.html");
+        }
       });
     }
   }
