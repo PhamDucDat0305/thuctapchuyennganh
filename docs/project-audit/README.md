@@ -69,6 +69,7 @@ flowchart LR
 - [Kiểm tra bảo mật](SECURITY_AUDIT.md)
 - [Chạy và triển khai](RUN_AND_DEPLOY.md)
 - [Tình trạng kiểm thử](TESTING.md)
+- [Checklist kiểm thử chức năng](CHECKLIST_TEST_CHUC_NANG.md)
 - [Lộ trình cải thiện](IMPROVEMENT_ROADMAP.md)
 
 ## Giới hạn và trạng thái xác minh
