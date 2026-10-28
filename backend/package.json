@@ -6,7 +6,8 @@
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
-    "dev": "nodemon src/server.js"
+    "dev": "nodemon src/server.js",
+    "test:frontend": "node scripts/test-frontend-host.js"
   },
   "dependencies": {
     "argon2": "^0.45.1",

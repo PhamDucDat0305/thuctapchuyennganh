@@ -1,8 +1,8 @@
-// Shared HTTP client for the SQL Server backed Express API.
-// Change this value if the API runs on another host or port.
-// Keep host consistent with the page URL so the browser treats the session
-// cookie as same-site (open the frontend via localhost or 127.0.0.1, not file://).
-const API_BASE_URL = `${location.protocol}//${location.hostname || 'localhost'}:3000/api`;
+// Same-origin by default when Express serves the frontend and API together.
+// Keep compatibility with the previously configured Live Server ports.
+const legacyLiveServer = ['5500', '5501'].includes(location.port);
+const legacyApiBase = `${location.protocol}//${location.hostname || 'localhost'}:3000/api`;
+const API_BASE_URL = window.JV_API_BASE_URL || (legacyLiveServer ? legacyApiBase : '/api');
 
 async function apiRequest(path, options = {}) {
   const response = await fetch(`${API_BASE_URL}${path}`, {

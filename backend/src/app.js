@@ -1,4 +1,5 @@
 const express = require('express');
+const path = require('node:path');
 const { createSessionMiddleware, connectSessionStore, closeSessionStore } = require('./config/session');
 const healthRoutes = require('./routes/health.routes');
 const authRoutes = require('./routes/auth.routes');
@@ -17,9 +18,10 @@ const profileViewsRoutes = require('./routes/profile-views.routes');
 const { notFound, errorHandler } = require('./middleware/errorHandler');
 
 const app = express();
+const frontendRoot = path.resolve(__dirname, '..', '..');
 
-// Cookie sessions require credentialed CORS when the static frontend runs on
-// another local development port (for example Live Server on :5500).
+// Keep credentialed CORS for optional external frontend origins such as Live
+// Server. The normal single-server setup is same-origin and does not need CORS.
 const allowedOrigins = (process.env.FRONTEND_ORIGINS || 'http://localhost:5500,http://localhost:5501,http://127.0.0.1:5500,http://127.0.0.1:5501')
   .split(',').map((origin) => origin.trim()).filter(Boolean);
 app.use((req, res, next) => {
@@ -36,10 +38,51 @@ app.use((req, res, next) => {
 });
 
 app.disable('x-powered-by');
+
+// Only expose known frontend directories. Do not mount the project root:
+// backend source/config, SQL, reports, docs, .env and .git must stay private.
+for (const directory of ['css', 'js', 'ico', 'candidate', 'employer']) {
+  app.use(`/${directory}`, express.static(path.join(frontendRoot, directory), {
+    dotfiles: 'deny',
+    fallthrough: true,
+    index: false,
+  }));
+}
+
+// Serve only known root-level HTML pages plus short, optional aliases. Keep
+// the existing *.html URLs working and avoid a catch-all SPA fallback so API
+// and unknown routes retain JSON 404 responses.
+const frontendPages = {
+  '/': 'index.html',
+  '/index.html': 'index.html',
+  '/about': 'about.html',
+  '/about.html': 'about.html',
+  '/contact': 'contact.html',
+  '/contact.html': 'contact.html',
+  '/auth': 'auth.html',
+  '/auth.html': 'auth.html',
+  '/jobs': 'job-list.html',
+  '/job-list.html': 'job-list.html',
+  '/job-list': 'job-list.html',
+  '/job-detail': 'job-detail.html',
+  '/job-detail.html': 'job-detail.html',
+  '/favicon.ico': 'ico/favicon.ico',
+  '/browserconfig.xml': 'ico/browserconfig.xml',
+  '/LabThucHanh.html': 'LabThucHanh.html',
+};
+for (const [route, file] of Object.entries(frontendPages)) {
+  app.get(route, (req, res, next) => {
+    res.sendFile(path.join(frontendRoot, file), { dotfiles: 'deny' }, (error) => {
+      if (error) next(error);
+    });
+  });
+}
+
 app.use(express.json({ limit: '1mb' }));
+app.use('/api/health', healthRoutes);
+// Health checks must work independently of the SQL-backed session store.
 app.use(createSessionMiddleware());
 
-app.use('/api/health', healthRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/me', meRoutes);
 app.use('/api/jobs', jobsRoutes);
