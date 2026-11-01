@@ -1,54 +1,18 @@
-# Hướng dẫn các file trong project JobViệt
+# Hướng dẫn Backend và JavaScript của JobViệt
 
 ## Phạm vi
 
-Tài liệu này mô tả từng file đang được Git theo dõi tại thời điểm tạo: mục đích, phần nội dung/chức năng chính và một số endpoint/đối tượng SQL được đọc trực tiếp từ mã nguồn. Các file được tạo tự động trong `node_modules/`, metadata lịch sử trong `.git/`, file `.env` thực chứa secret và file chưa được Git theo dõi không nằm trong danh sách. File hình được ghi vai trò/tên tài nguyên vì không chứa mã nguồn văn bản.
+Tài liệu này tập trung vào mã backend trong `backend/` và JavaScript phía trình duyệt trong `js/`. HTML, CSS, icon và tài liệu khác được chủ ý lược bỏ để tập trung vào luồng xử lý dữ liệu và API. Các file được liệt kê là những file backend/JS đang được Git theo dõi; không bao gồm `node_modules/`, `.git/` hay file `.env` chứa thông tin bí mật.
 
-## Cách đọc
+Mỗi mục nêu chức năng và nội dung chính của file. Đây là bản đồ source code, không phải bản sao đầy đủ từng dòng mã.
 
-- **File**: đường dẫn tương đối từ thư mục gốc project.
-- **Nội dung/chức năng**: trách nhiệm chính dựa trên mã hiện có; đây là mô tả, không phải bản sao toàn bộ source code.
-- Frontend là HTML/CSS/JS thuần; backend là Express + SQL Server; migrations trong `backend/sql` được chạy thủ công theo đúng trạng thái database.
+## Kiến trúc trong một request
 
-## (thư mục gốc)
-
-### `.gitignore`
-
-Quy tắc loại file bí mật, dependency, output hoặc file môi trường khỏi Git.
-
-### `LabThucHanh.html`
-
-Trang lab/thực hành giao diện, dùng các stylesheet riêng cho lab.
-
-### `about.html`
-
-Trang giới thiệu website/dịch vụ JobViệt.
-
-### `auth.html`
-
-Giao diện đăng nhập/đăng ký; form được xử lý bởi js/auth.js và gọi API xác thực.
-
-### `contact.html`
-
-Trang thông tin/liên hệ JobViệt.
-
-### `index.html`
-
-Trang chủ công khai: giới thiệu JobViệt, điều hướng và các khối nội dung trang chủ.
-
-### `job-detail.html`
-
-Chi tiết một tin tuyển dụng, hiển thị thông tin và các thao tác lưu/ứng tuyển.
-
-### `job-list.html`
-
-Danh sách/tìm kiếm/lọc tin tuyển dụng; dữ liệu tải từ API việc làm.
-
-## .vscode
-
-### `.vscode/settings.json`
-
-Cài đặt editor VS Code dùng chung trong project.
+1. Trang giao diện gọi các hàm của `js/db.js` hoặc `js/auth.js`.
+2. Những module này dùng `js/api.js` để gửi HTTP request tới `/api`, kèm cookie session.
+3. `backend/src/app.js` nhận request và chuyển tới route tương ứng trong `backend/src/routes/`.
+4. Middleware xác thực session và vai trò trước khi route đọc/ghi dữ liệu bằng pool SQL Server.
+5. Route trả JSON; frontend cập nhật giao diện hoặc hiển thị lỗi.
 
 ## backend
 
@@ -222,354 +186,6 @@ Bọc async route handler để chuyển Promise rejection tới middleware lỗ
 
 Promise helper cho regenerate/save/destroy session; dùng trong luồng xác thực.
 
-## candidate
-
-### `candidate/accepted-jobs.html`
-
-Danh sách ứng tuyển được nhà tuyển dụng chấp nhận/trúng tuyển.
-
-### `candidate/account.html`
-
-Thông tin tài khoản cá nhân và form cập nhật hồ sơ/tài khoản.
-
-### `candidate/apply.html`
-
-Trang xác nhận/nộp ứng tuyển cho một tin tuyển dụng.
-
-### `candidate/cover-letter.html`
-
-Trang mẫu/nội dung thư xin việc.
-
-### `candidate/dashboard.html`
-
-Bảng tổng quan ứng viên, hiển thị số liệu và lối tắt tới các chức năng ứng viên.
-
-### `candidate/employer-invites.html`
-
-Danh sách lời mời phỏng vấn/trao đổi từ nhà tuyển dụng.
-
-### `candidate/interviews.html`
-
-Danh sách và chi tiết lịch phỏng vấn.
-
-### `candidate/messages.html`
-
-Hộp thư và giao diện hội thoại.
-
-### `candidate/my-applications.html`
-
-Danh sách việc đã ứng tuyển và trạng thái.
-
-### `candidate/my-cv.html`
-
-Quản lý/xem CV của ứng viên.
-
-### `candidate/profile-views.html`
-
-Lịch sử nhà tuyển dụng đã xem hồ sơ ứng viên.
-
-### `candidate/saved-jobs.html`
-
-Danh sách tin tuyển dụng đã lưu.
-
-### `candidate/security.html`
-
-Cài đặt bảo mật tài khoản.
-
-## css
-
-### `css/navbar.css`
-
-Kiểu thanh điều hướng, menu và responsive navigation.
-
-### `css/styles.css`
-
-Style nền dùng chung: biến thiết kế, layout, nút, form, card và component tái sử dụng.
-
-## css/pages
-
-### `css/pages/admin.css`
-
-Quy tắc giao diện theo trang/nhóm admin; định nghĩa bố cục, màu sắc và trạng thái component.
-
-### `css/pages/auth.css`
-
-Quy tắc giao diện theo trang/nhóm auth; định nghĩa bố cục, màu sắc và trạng thái component.
-
-### `css/pages/candidate.css`
-
-Quy tắc giao diện theo trang/nhóm candidate; định nghĩa bố cục, màu sắc và trạng thái component.
-
-### `css/pages/dashboard.css`
-
-Quy tắc giao diện theo trang/nhóm dashboard; định nghĩa bố cục, màu sắc và trạng thái component.
-
-### `css/pages/employer.css`
-
-Quy tắc giao diện theo trang/nhóm employer; định nghĩa bố cục, màu sắc và trạng thái component.
-
-### `css/pages/home.css`
-
-Quy tắc giao diện theo trang/nhóm home; định nghĩa bố cục, màu sắc và trạng thái component.
-
-### `css/pages/job.css`
-
-Quy tắc giao diện theo trang/nhóm job; định nghĩa bố cục, màu sắc và trạng thái component.
-
-### `css/pages/lab.css`
-
-Quy tắc giao diện theo trang/nhóm lab; định nghĩa bố cục, màu sắc và trạng thái component.
-
-### `css/pages/messages.css`
-
-Quy tắc giao diện theo trang/nhóm messages; định nghĩa bố cục, màu sắc và trạng thái component.
-
-### `css/pages/static.css`
-
-Quy tắc giao diện theo trang/nhóm static; định nghĩa bố cục, màu sắc và trạng thái component.
-
-## docs/project-audit
-
-### `docs/project-audit/API_DOCUMENTATION.md`
-
-Danh mục endpoint, phương thức, quyền và ví dụ gọi API. Các mục: Health, auth, me, public; Employer jobs, company, users; Applications và interview; Saved jobs, messages, invites, profile views; Ví dụ dữ liệu giả; Lỗi chung.
-
-### `docs/project-audit/ARCHITECTURE.md`
-
-Mô tả phân lớp, request/data flow, xác thực, phân quyền và các luồng nghiệp vụ. Các mục: Phân lớp; Request và database; Authentication/session; Phân quyền và ownership; Các luồng nghiệp vụ; Ứng tuyển.
-
-### `docs/project-audit/BUGS_AND_ISSUES.md`
-
-Ghi nhận lỗi/rủi ro kỹ thuật phát hiện trong đợt audit. Các mục: Các vấn đề không kết luận là lỗi.
-
-### `docs/project-audit/CHECKLIST_TEST_CHUC_NANG.md`
-
-Danh sách bước kiểm thử thủ công các luồng chính trên UI/API/database. Các mục: 1. Chuẩn bị môi trường; 2. Khách và xác thực; 3. Hồ sơ và quyền riêng tư ứng viên; 4. Tin tuyển dụng và lượt xem; 5. Ứng tuyển và phỏng vấn; 6. Công ty, việc đã lưu, lời mời và lượt xem hồ sơ.
-
-### `docs/project-audit/DATABASE.md`
-
-Tài liệu schema SQL Server, migration, quan hệ bảng và lưu ý kiểm chứng. Các mục: A. Database và schema lifecycle; B. Các bảng; Bảng được tạo bởi scripts; Bảng lõi được tham chiếu nhưng thiếu DDL; C. ERD (quan hệ được xác nhận trong migration/code); D. Truy vấn và nghiệp vụ.
-
-### `docs/project-audit/DIRECTORY_STRUCTURE.md`
-
-Sơ đồ thư mục và giải thích các nhóm file chính. Các mục: Thành phần quan trọng; File SQL; Tài liệu hiện có và Git.
-
-### `docs/project-audit/FEATURES.md`
-
-Danh sách tính năng người dùng và mức độ hoàn thiện đã rà soát. Các mục: Tổng kết mức hoàn thiện.
-
-### `docs/project-audit/IMPROVEMENT_ROADMAP.md`
-
-Lộ trình cải tiến được sắp theo mức ưu tiên. Các mục: P0 — Làm trước khi đưa lên môi trường dùng thật; P1 — Tính đúng và giảm rủi ro nghiệp vụ; P2 — Khả năng bảo trì và hiệu năng; P3 — Mở rộng có căn cứ.
-
-### `docs/project-audit/README.md`
-
-Tổng quan JobViệt, vai trò, chức năng, công nghệ và trạng thái audit. Các mục: Mục đích; Người dùng và vai trò; Chức năng chính đã tìm thấy; Công nghệ và kiến trúc; Cấu trúc project con; Điều kiện chạy (theo cấu hình).
-
-### `docs/project-audit/RUN_AND_DEPLOY.md`
-
-Yêu cầu môi trường, cấu hình .env, database, chạy local và triển khai. Các mục: Điều kiện; Cài dependency; Cấu hình môi trường; Database; Chạy local; Build/test/deploy.
-
-### `docs/project-audit/SECURITY_AUDIT.md`
-
-Đánh giá xác thực, phân quyền, SQL, XSS, secrets và rủi ro an ninh. Các mục: Phạm vi và giới hạn; Authentication và session; Authorization/BOLA/IDOR; SQL injection và validation; XSS và browser security; Secrets, Firebase và dữ liệu.
-
-### `docs/project-audit/TECH_STACK.md`
-
-Công nghệ, runtime và dependency của frontend/backend. Các mục: Công nghệ phát hiện; Dependency backend; Build/package tools; Cài dependency; Chưa xác định.
-
-### `docs/project-audit/TESTING.md`
-
-Tổng hợp test có sẵn, test đã chạy và phần cần xác minh/bổ sung. Các mục: Test suite trong repository; Lệnh thực sự chạy trong audit; Chưa chạy/chưa xác minh; Test nên bổ sung; Backend unit/integration; Frontend.
-
-## employer
-
-### `employer/accepted-candidates.html`
-
-Các ứng viên đã được chấp nhận/trúng tuyển vào tin của nhà tuyển dụng.
-
-### `employer/account.html`
-
-Thông tin tài khoản nhà tuyển dụng và cập nhật thông tin cá nhân.
-
-### `employer/applicants.html`
-
-Tìm kiếm/lọc ứng viên trên nền tảng.
-
-### `employer/applied-candidates.html`
-
-Danh sách ứng viên đã nộp đơn vào các tin.
-
-### `employer/candidate-profile.html`
-
-Hồ sơ chi tiết của ứng viên được nhà tuyển dụng xem.
-
-### `employer/company-profile.html`
-
-Thông tin hồ sơ công ty công khai.
-
-### `employer/dashboard.html`
-
-Tổng quan hoạt động tuyển dụng và số liệu chính.
-
-### `employer/edit-company.html`
-
-Biểu mẫu chỉnh sửa hồ sơ công ty.
-
-### `employer/edit-job.html`
-
-Biểu mẫu sửa tin tuyển dụng hiện có.
-
-### `employer/interviews.html`
-
-Quản lý lịch phỏng vấn với ứng viên.
-
-### `employer/job-applicants.html`
-
-Danh sách ứng viên của một tin tuyển dụng cụ thể.
-
-### `employer/messages.html`
-
-Hộp thư và hội thoại của nhà tuyển dụng.
-
-### `employer/my-jobs.html`
-
-Danh sách/quản lý các tin do nhà tuyển dụng đăng.
-
-### `employer/password.html`
-
-Đổi mật khẩu tài khoản nhà tuyển dụng.
-
-### `employer/post-job.html`
-
-Biểu mẫu tạo tin tuyển dụng mới.
-
-### `employer/saved-candidates.html`
-
-Danh sách ứng viên nhà tuyển dụng đã lưu.
-
-### `employer/security.html`
-
-Trang chức năng dành cho nhà tuyển dụng.
-
-### `employer/stats-performance.html`
-
-Thống kê hiệu quả tuyển dụng.
-
-### `employer/stats-views.html`
-
-Thống kê lượt xem tin tuyển dụng.
-
-## ico
-
-### `ico/android-icon-144x144.png`
-
-Ảnh icon/favicon dành cho kích thước hoặc nền tảng cụ thể.
-
-### `ico/android-icon-192x192.png`
-
-Ảnh icon/favicon dành cho kích thước hoặc nền tảng cụ thể.
-
-### `ico/android-icon-36x36.png`
-
-Ảnh icon/favicon dành cho kích thước hoặc nền tảng cụ thể.
-
-### `ico/android-icon-48x48.png`
-
-Ảnh icon/favicon dành cho kích thước hoặc nền tảng cụ thể.
-
-### `ico/android-icon-72x72.png`
-
-Ảnh icon/favicon dành cho kích thước hoặc nền tảng cụ thể.
-
-### `ico/android-icon-96x96.png`
-
-Ảnh icon/favicon dành cho kích thước hoặc nền tảng cụ thể.
-
-### `ico/apple-icon-114x114.png`
-
-Ảnh icon/favicon dành cho kích thước hoặc nền tảng cụ thể.
-
-### `ico/apple-icon-120x120.png`
-
-Ảnh icon/favicon dành cho kích thước hoặc nền tảng cụ thể.
-
-### `ico/apple-icon-144x144.png`
-
-Ảnh icon/favicon dành cho kích thước hoặc nền tảng cụ thể.
-
-### `ico/apple-icon-152x152.png`
-
-Ảnh icon/favicon dành cho kích thước hoặc nền tảng cụ thể.
-
-### `ico/apple-icon-180x180.png`
-
-Ảnh icon/favicon dành cho kích thước hoặc nền tảng cụ thể.
-
-### `ico/apple-icon-57x57.png`
-
-Ảnh icon/favicon dành cho kích thước hoặc nền tảng cụ thể.
-
-### `ico/apple-icon-60x60.png`
-
-Ảnh icon/favicon dành cho kích thước hoặc nền tảng cụ thể.
-
-### `ico/apple-icon-72x72.png`
-
-Ảnh icon/favicon dành cho kích thước hoặc nền tảng cụ thể.
-
-### `ico/apple-icon-76x76.png`
-
-Ảnh icon/favicon dành cho kích thước hoặc nền tảng cụ thể.
-
-### `ico/apple-icon-precomposed.png`
-
-Ảnh icon/favicon dành cho kích thước hoặc nền tảng cụ thể.
-
-### `ico/apple-icon.png`
-
-Ảnh icon/favicon dành cho kích thước hoặc nền tảng cụ thể.
-
-### `ico/browserconfig.xml`
-
-Cấu hình/icon metadata dành cho trình duyệt hoặc Windows.
-
-### `ico/favicon-16x16.png`
-
-Ảnh icon/favicon dành cho kích thước hoặc nền tảng cụ thể.
-
-### `ico/favicon-32x32.png`
-
-Ảnh icon/favicon dành cho kích thước hoặc nền tảng cụ thể.
-
-### `ico/favicon-96x96.png`
-
-Ảnh icon/favicon dành cho kích thước hoặc nền tảng cụ thể.
-
-### `ico/favicon.ico`
-
-Ảnh icon/favicon dành cho kích thước hoặc nền tảng cụ thể.
-
-### `ico/manifest.json`
-
-Web app manifest: tên ứng dụng, icon và cách trình duyệt cài shortcut.
-
-### `ico/ms-icon-144x144.png`
-
-Ảnh icon/favicon dành cho kích thước hoặc nền tảng cụ thể.
-
-### `ico/ms-icon-150x150.png`
-
-Ảnh icon/favicon dành cho kích thước hoặc nền tảng cụ thể.
-
-### `ico/ms-icon-310x310.png`
-
-Ảnh icon/favicon dành cho kích thước hoặc nền tảng cụ thể.
-
-### `ico/ms-icon-70x70.png`
-
-Ảnh icon/favicon dành cho kích thước hoặc nền tảng cụ thể.
-
 ## js
 
 ### `js/api.js`
@@ -596,13 +212,20 @@ Tạo thanh điều hướng, menu tài khoản theo vai trò và xử lý sự 
 
 Hiển thị toast/thông báo tạm thời cho thao tác thành công hoặc lỗi.
 
-## Luồng tổng thể
+## Các luồng quan trọng
 
-1. Trình duyệt mở file HTML; HTML nạp style từ `css/` và logic từ `js/`.
-2. `js/api.js` gửi request tới `/api`; `backend/src/app.js` định tuyến request tới module `backend/src/routes/`.
-3. Route xác thực qua session/middleware, truy vấn SQL Server bằng pool trong `config/database.js`, rồi trả JSON.
-4. Các thay đổi schema nằm trong migration `backend/sql/`; cần đối chiếu cấu trúc database thực tế trước khi chạy migration.
+### Đăng nhập
 
-## Lưu ý
+`js/auth.js` gọi API đăng nhập; `backend/src/routes/auth.routes.js` kiểm tra thông tin và tạo session. Session store trong SQL Server lưu phiên; `authenticate.js` xác nhận session cho request cần đăng nhập.
 
-File này mô tả chức năng cấp file, không chép lại toàn bộ từng dòng code. Khi mã nguồn thay đổi, cần cập nhật mô tả để khớp phiên bản mới.
+### Chức năng dữ liệu
+
+`js/db.js` cung cấp các hàm dữ liệu dùng chung cho trang giao diện. Mỗi hàm gọi API tương ứng; route backend kiểm tra dữ liệu/quyền và thực hiện SQL qua pool từ `config/database.js`.
+
+### Schema
+
+Các thay đổi cấu trúc database được ghi trong `backend/sql/`. Đây là migration thủ công; trước khi áp dụng cần kiểm tra schema thực tế vì migration có thể phụ thuộc trạng thái bảng/cột hiện hữu.
+
+## Giới hạn tài liệu
+
+Mô tả chức năng dựa trên source hiện tại. Endpoint liệt kê là đường dẫn tương đối của router; `app.js` gắn router vào prefix `/api`. Payload, mã trạng thái và quyền chi tiết cần đối chiếu với logic trong từng route.
