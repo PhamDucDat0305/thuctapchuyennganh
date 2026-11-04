@@ -1,8 +1,6 @@
-// Same-origin by default when Express serves the frontend and API together.
-// Keep compatibility with the previously configured Live Server ports.
-const legacyLiveServer = ['5500', '5501'].includes(location.port);
-const legacyApiBase = `${location.protocol}//${location.hostname || 'localhost'}:3000/api`;
-const API_BASE_URL = window.JV_API_BASE_URL || (legacyLiveServer ? legacyApiBase : '/api');
+// Express serves both the frontend and API, so requests use the same origin.
+// Open the site through http://localhost:3000, not a separate Live Server port.
+const API_BASE_URL = '/api';
 
 async function apiRequest(path, options = {}) {
   const response = await fetch(`${API_BASE_URL}${path}`, {
