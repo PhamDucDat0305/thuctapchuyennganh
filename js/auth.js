@@ -8,7 +8,31 @@ window.Auth = {
   /**
    * Register through Express; the API creates the SQL Server session.
    */
-  async register(password, fullName, email, role, companyName = "") {
+  async sendEmailCode(email) {
+    try {
+      const result = await apiRequest("/auth/email/send-code", {
+        method: "POST",
+        body: JSON.stringify({ email }),
+      });
+      return { success: true, message: result.message };
+    } catch (error) {
+      return { success: false, message: error.message };
+    }
+  },
+
+  async verifyEmailCode(email, code) {
+    try {
+      const result = await apiRequest("/auth/email/verify-code", {
+        method: "POST",
+        body: JSON.stringify({ email, code }),
+      });
+      return { success: true, ...result };
+    } catch (error) {
+      return { success: false, message: error.message };
+    }
+  },
+
+  async register(password, fullName, email, role, companyName = "", verificationToken = "") {
     try {
       const result = await apiRequest("/auth/register", {
         method: "POST",
@@ -17,6 +41,7 @@ window.Auth = {
           password,
           fullName,
           role,
+          verificationToken,
           ...(role === "employer" ? { companyName: companyName.trim() } : {}),
         }),
       });

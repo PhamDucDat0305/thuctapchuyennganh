@@ -142,13 +142,37 @@
               />
             </div>
             <div class="form-group w-100 text-left">
-                <input
-                  type="email"
-                  class="form-input"
-                  id="email"
-                  placeholder="Email"
-                  required
-                />
+              <input
+                type="email"
+                class="form-input"
+                id="email"
+                placeholder="Email"
+                autocomplete="email"
+                required
+              />
+              <div class="email-verification-actions">
+                <button type="button" class="btn btn-primary" id="sendEmailCodeBtn" onclick="sendRegistrationCode()">
+                  Gửi mã xác nhận
+                </button>
+              </div>
+            </div>
+            <div class="form-group w-100 text-left" id="emailCodeGroup" hidden>
+              <input
+                type="text"
+                class="form-input"
+                id="emailCode"
+                placeholder="Mã xác nhận 6 chữ số"
+                inputmode="numeric"
+                autocomplete="one-time-code"
+                maxlength="6"
+                pattern="[0-9]{6}"
+              />
+              <div class="email-verification-actions">
+                <button type="button" class="btn btn-primary" id="verifyEmailCodeBtn" onclick="verifyRegistrationCode()">
+                  Xác nhận email
+                </button>
+                <span id="emailVerificationStatus" role="status" aria-live="polite"></span>
+              </div>
             </div>
             <div class="form-group w-100 text-left">
               <input
@@ -156,6 +180,21 @@
                 class="form-input"
                 id="password_reg"
                 placeholder="Mật khẩu"
+                autocomplete="new-password"
+                minlength="8"
+                maxlength="128"
+                required
+              />
+            </div>
+            <div class="form-group w-100 text-left">
+              <input
+                type="password"
+                class="form-input"
+                id="password_confirm"
+                placeholder="Xác nhận mật khẩu"
+                autocomplete="new-password"
+                minlength="8"
+                maxlength="128"
                 required
               />
             </div>
@@ -308,6 +347,77 @@
         if (!isEmployer) companyName.value = "";
       }
 
+      let registrationVerificationToken = "";
+      let verifiedRegistrationEmail = "";
+      let codeCooldownTimer;
+
+      document.getElementById("email").addEventListener("input", () => {
+        const email = document.getElementById("email").value.trim().toLowerCase();
+        if (verifiedRegistrationEmail && email !== verifiedRegistrationEmail) {
+          registrationVerificationToken = "";
+          verifiedRegistrationEmail = "";
+          document.getElementById("emailVerificationStatus").textContent = "";
+          document.getElementById("emailCode").value = "";
+          document.getElementById("emailCodeGroup").hidden = true;
+        }
+      });
+
+      async function sendRegistrationCode() {
+        const email = document.getElementById("email").value.trim().toLowerCase();
+        if (!email || !document.getElementById("email").checkValidity()) {
+          showToast("Hãy nhập email hợp lệ trước khi gửi mã.", "error");
+          return;
+        }
+
+        const button = document.getElementById("sendEmailCodeBtn");
+        button.disabled = true;
+        const result = await window.Auth.sendEmailCode(email);
+        if (!result.success) {
+          button.disabled = false;
+          showToast(result.message, "error");
+          return;
+        }
+
+        registrationVerificationToken = "";
+        verifiedRegistrationEmail = "";
+        document.getElementById("emailCode").value = "";
+        document.getElementById("emailVerificationStatus").textContent = "";
+        document.getElementById("emailCodeGroup").hidden = false;
+        showToast(result.message, "success");
+
+        let seconds = 60;
+        button.textContent = `Gửi lại mã (${seconds}s)`;
+        clearInterval(codeCooldownTimer);
+        codeCooldownTimer = setInterval(() => {
+          seconds -= 1;
+          if (seconds <= 0) {
+            clearInterval(codeCooldownTimer);
+            button.disabled = false;
+            button.textContent = "Gửi lại mã";
+          } else {
+            button.textContent = `Gửi lại mã (${seconds}s)`;
+          }
+        }, 1000);
+      }
+
+      async function verifyRegistrationCode() {
+        const email = document.getElementById("email").value.trim().toLowerCase();
+        const code = document.getElementById("emailCode").value.trim();
+        const button = document.getElementById("verifyEmailCodeBtn");
+        button.disabled = true;
+        const result = await window.Auth.verifyEmailCode(email, code);
+        button.disabled = false;
+        if (!result.success) {
+          showToast(result.message, "error");
+          return;
+        }
+
+        registrationVerificationToken = result.verificationToken;
+        verifiedRegistrationEmail = email;
+        document.getElementById("emailVerificationStatus").textContent = "Email đã xác minh";
+        showToast("Email đã được xác minh.", "success");
+      }
+
       /* ===== Toast ===== */
       let toastTimer;
       function showToast(message, type = "success") {
@@ -350,10 +460,22 @@
         const fullName = document.getElementById("fullName").value.trim();
         const email = document.getElementById("email").value.trim();
         const password = document.getElementById("password_reg").value;
+        const confirmPassword = document.getElementById("password_confirm").value;
         const role = document.getElementById("role").value;
         const companyName = document.getElementById("companyName").value.trim();
 
-        const result = await window.Auth.register(password, fullName, email, role, companyName);
+        if (password !== confirmPassword) {
+          showToast("Mật khẩu xác nhận không khớp.", "error");
+          return;
+        }
+        if (!registrationVerificationToken || verifiedRegistrationEmail !== email.trim().toLowerCase()) {
+          showToast("Hãy xác minh email trước khi đăng ký.", "error");
+          return;
+        }
+
+        const result = await window.Auth.register(
+          password, fullName, email, role, companyName, registrationVerificationToken
+        );
         if (!result.success) {
           showToast(result.message, "error");
           return;
