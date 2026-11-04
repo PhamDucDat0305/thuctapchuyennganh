@@ -673,6 +673,10 @@ window.App = {
   /* ================= FLOATING CHAT WIDGET ================= */
 
   initFloatingChat() {
+    // Dashboard sections run inside the content iframe; the outer shell owns
+    // the single floating chat button and its polling loop.
+    if (window.self !== window.top) return;
+
     const user = Auth.getCurrentUser();
     if (!user || user.role === "admin" || window.location.pathname.includes("messages.html")) return;
 
