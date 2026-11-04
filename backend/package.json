@@ -7,6 +7,7 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
+    "test:mail": "node src/test-mail.js",
     "test:frontend": "node scripts/test-frontend-host.js"
   },
   "dependencies": {
@@ -15,7 +16,8 @@
     "dotenv": "^18.0.8",
     "express": "^5.3.0",
     "express-session": "^1.19.0",
-    "mssql": "^12.7.10"
+    "mssql": "^12.7.10",
+    "nodemailer": "^10.3.1"
   },
   "devDependencies": {
     "nodemon": "^3.1.14"
