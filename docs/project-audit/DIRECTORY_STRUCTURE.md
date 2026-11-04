@@ -3,7 +3,7 @@
 ```text
 D:\DH52300430\
 ├── index.html, job-list.html, job-detail.html, auth.html
-├── about.html, contact.html, LabThucHanh.html
+├── about.html, contact.html
 ├── candidate/                    # Trang tài khoản ứng viên
 ├── employer/                     # Trang tài khoản nhà tuyển dụng
 ├── css/                           # CSS chung và theo trang
@@ -48,7 +48,6 @@ D:\DH52300430\
 | `backend/node_modules/` | Thư viện cài local, bị bỏ qua khi liệt kê source | Không đưa vào kiểm kê | Sinh tự động |
 | `.gitignore` | Bỏ qua `.env`, `node_modules`, log | Cao | Không |
 | `.vscode/` | Cấu hình editor; không phải cấu hình build | Thấp | Không |
-| `LabThucHanh.html` | Trang lab ở root | Thấp | Không |
 
 ## File SQL
 
@@ -56,4 +55,4 @@ D:\DH52300430\
 
 ## Tài liệu hiện có và Git
 
-Trước audit không tìm thấy README/Markdown tài liệu project; `docs/project-audit/` được tạo mới. `git status` cho thấy working tree có nhiều thay đổi chưa commit, gồm 515 file bị xóa (nhiều file thuộc `LabThucHanh/`), 43 file sửa và 4 mục untracked tại thời điểm kiểm tra. Đây là trạng thái sẵn có; audit không chỉnh sửa hay phục hồi các file đó.
+Trước audit không tìm thấy README/Markdown tài liệu project; `docs/project-audit/` được tạo mới. `git status` cho thấy working tree có nhiều thay đổi chưa commit, gồm 515 file bị xóa, 43 file sửa và 4 mục untracked tại thời điểm kiểm tra. Đây là trạng thái sẵn có; audit không chỉnh sửa hay phục hồi các file đó.

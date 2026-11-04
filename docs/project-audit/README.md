@@ -79,4 +79,4 @@ flowchart LR
 - Không đọc file `backend/.env`, không kết nối SQL Server, không chạy migration và không đọc dữ liệu runtime.
 - Các bảng `dbo.users`, `dbo.companies`, `dbo.jobs` được API và migrations tham chiếu nhưng không có DDL tạo ban đầu trong project. Schema runtime vì vậy chưa thể đối chiếu đầy đủ.
 - Trước đó người dùng đã báo thành công một số luồng trong trao đổi, nhưng không có log/checklist đầy đủ để coi là kiểm thử độc lập cho toàn ứng dụng.
-- Có 562 mục Git thay đổi nhìn thấy khi audit (515 deletions, 43 modifications, 4 untracked). Trong đó có nhiều file dưới `LabThucHanh/` đang bị đánh dấu xóa; không quy nguyên nhân và không thay đổi chúng.
+- Có 562 mục Git thay đổi nhìn thấy khi audit (515 deletions, 43 modifications, 4 untracked) tại thời điểm audit; không quy nguyên nhân và không thay đổi các mục đó.

@@ -428,7 +428,6 @@ window.App = {
             <ul>
               <li><a href="${base}about.html">Giới thiệu</a></li>
               <li><a href="${base}contact.html">Liên hệ</a></li>
-              <li><a href="${base}LabThucHanh.html">Lab Thực Hành</a></li>
             </ul>
           </div>
         </div>

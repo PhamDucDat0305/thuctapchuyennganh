@@ -149,7 +149,6 @@
       { href: resolveHref("job-list.html"), label: "Việc làm" },
       { href: resolveHref("about.html"), label: "Giới thiệu" },
       { href: resolveHref("contact.html"), label: "Liên hệ" },
-      { href: resolveHref("LabThucHanh.html"), label: "Lab Thực Hành" },
     ];
     
     const currentPage = location.pathname.split("/").pop() || "index.html";

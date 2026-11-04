@@ -64,7 +64,7 @@ async function main() {
   try {
     for (const page of [
       '/', '/index.html', '/about.html', '/about', '/contact.html', '/auth.html',
-      '/jobs', '/job-list.html', '/job-detail.html', '/LabThucHanh.html',
+      '/jobs', '/job-list.html', '/job-detail.html',
       '/candidate/dashboard.html', '/employer/dashboard.html',
     ]) {
       await expectStatus(page, 200, /text\/html/);

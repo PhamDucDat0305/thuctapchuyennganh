@@ -68,7 +68,6 @@ const frontendPages = {
   '/job-detail.html': 'job-detail.html',
   '/favicon.ico': 'ico/favicon.ico',
   '/browserconfig.xml': 'ico/browserconfig.xml',
-  '/LabThucHanh.html': 'LabThucHanh.html',
 };
 for (const [route, file] of Object.entries(frontendPages)) {
   app.get(route, (req, res, next) => {
