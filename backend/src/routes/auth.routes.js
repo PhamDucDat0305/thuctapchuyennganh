@@ -1,12 +1,15 @@
 const express = require('express');
 const argon2 = require('argon2');
+const crypto = require('node:crypto');
 const { sql, getPool } = require('../config/database');
 const { SESSION_COOKIE_NAME } = require('../config/session');
 const asyncHandler = require('../utils/asyncHandler');
+const authEmailRoutes = require('./auth-email.routes');
 const rateLimit = require('../middleware/rateLimit');
 const { regenerateSession, saveSession, destroySession } = require('../utils/sessionHelpers');
 
 const router = express.Router();
+router.use('/email', authEmailRoutes);
 const limitRegister = rateLimit({ windowMs: 60 * 60 * 1000, max: 5, message: 'Bạn đã đăng ký quá nhiều lần. Vui lòng thử lại sau.' });
 const limitLogin = rateLimit({ windowMs: 15 * 60 * 1000, max: 10, message: 'Bạn đã thử đăng nhập quá nhiều lần. Vui lòng thử lại sau.' });
 
@@ -44,6 +47,7 @@ router.post('/register', limitRegister, asyncHandler(async (req, res) => {
   const body = req.body || {};
   const email = str(body.email).toLowerCase();
   const password = typeof body.password === 'string' ? body.password : '';
+  const verificationToken = str(body.verificationToken);
   const fullName = str(body.fullName);
   const role = str(body.role);
   const phone = str(body.phone);
@@ -51,6 +55,9 @@ router.post('/register', limitRegister, asyncHandler(async (req, res) => {
 
   if (!EMAIL_RE.test(email) || email.length > 255) {
     return res.status(400).json({ error: 'Email không hợp lệ' });
+  }
+  if (!verificationToken || verificationToken.length > 200) {
+    return res.status(400).json({ error: 'Hãy xác minh email trước khi đăng ký' });
   }
   if (password.length < 8 || password.length > 128) {
     return res.status(400).json({ error: 'Mật khẩu phải từ 8 đến 128 ký tự' });
@@ -82,6 +89,24 @@ router.post('/register', limitRegister, asyncHandler(async (req, res) => {
   await tx.begin();
   let userId;
   try {
+    const tokenHash = crypto.createHash('sha256').update(verificationToken).digest('hex');
+    const verification = await new sql.Request(tx)
+      .input('email', sql.NVarChar(255), email)
+      .input('tokenHash', sql.VarChar(64), tokenHash)
+      .query(`SELECT TOP (1) id
+              FROM dbo.email_verifications WITH (UPDLOCK, HOLDLOCK)
+              WHERE email = @email
+                AND verification_token_hash = @tokenHash
+                AND verified_at IS NOT NULL
+                AND verification_expires_at > SYSUTCDATETIME()
+                AND consumed_at IS NULL
+              ORDER BY id DESC`);
+    if (!verification.recordset.length) {
+      await tx.rollback();
+      return res.status(400).json({ error: 'Xác minh email đã hết hạn hoặc đã được sử dụng. Hãy xác minh lại.' });
+    }
+    const verificationId = verification.recordset[0].id;
+
     const inserted = await new sql.Request(tx)
       .input('email', sql.NVarChar(255), email)
       .input('hash', sql.NVarChar(255), hash)
@@ -102,6 +127,15 @@ router.post('/register', limitRegister, asyncHandler(async (req, res) => {
         .input('id', sql.BigInt, userId)
         .input('name', sql.NVarChar(200), companyName)
         .query('INSERT INTO dbo.companies (employer_id, name) VALUES (@id, @name)');
+    }
+
+    const consumed = await new sql.Request(tx)
+      .input('id', sql.Int, verificationId)
+      .query(`UPDATE dbo.email_verifications
+              SET consumed_at = SYSUTCDATETIME()
+              WHERE id = @id AND consumed_at IS NULL`);
+    if (consumed.rowsAffected[0] !== 1) {
+      throw new Error('Không thể sử dụng token xác minh email');
     }
     await tx.commit();
   } catch (err) {
