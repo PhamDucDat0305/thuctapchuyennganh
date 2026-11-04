@@ -137,6 +137,15 @@
   position: relative;
 }
 
+.dashboard-content-frame {
+  display: block;
+  width: 100%;
+  height: calc(100vh - 150px);
+  min-height: 560px;
+  border: 0;
+  background: var(--bg);
+}
+
 .dashboard-top-bar {
   display: flex;
   align-items: center;
@@ -338,6 +347,10 @@
   .content-area {
     max-width: 100vw;
     padding: 20px 16px;
+  }
+  .dashboard-content-frame {
+    height: calc(100vh - 130px);
+    min-height: 500px;
   }
   .sidebar-toggle-btn {
     display: inline-flex;

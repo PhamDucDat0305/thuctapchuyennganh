@@ -214,6 +214,158 @@ window.App = {
     if (role !== "admin") BadgeNotifier.startPolling(user.id, role);
     this._ensureSidebarOverlay();
     this.ensureSidebarToggle();
+    this.enableSidebarContentNavigation();
+  },
+
+  enableSidebarContentNavigation() {
+    const sidebar = document.getElementById("sidebar");
+    const contentArea = document.querySelector(".content-area");
+    const user = window.Auth?.getCurrentUser();
+    if (!sidebar || !contentArea || !user || sidebar.dataset.contentNavigationBound) return;
+
+    sidebar.dataset.contentNavigationBound = "true";
+    const roleRoot = `/${user.role}/`;
+    const originalNodes = Array.from(contentArea.childNodes);
+    const originalTitle = document.title;
+    let frame = null;
+    let topBar = null;
+
+    const closeMobileSidebar = () => {
+      sidebar.classList.remove("open");
+      document.getElementById("sidebarOverlay")?.classList.remove("active");
+    };
+
+    const updateActiveLink = (url) => {
+      const aliases = {
+        "edit-job.html": "my-jobs.html",
+        "job-applicants.html": "my-jobs.html",
+        "candidate-profile.html": "applicants.html",
+      };
+      const page = aliases[url.pathname.split("/").pop()] || url.pathname.split("/").pop();
+      sidebar.querySelectorAll(".sidebar-menu a").forEach((link) => {
+        const linkUrl = new URL(link.href, window.location.href);
+        link.classList.toggle("active", linkUrl.pathname === url.pathname || linkUrl.pathname.endsWith(`/${page}`));
+      });
+    };
+
+    const syncFrameDocument = () => {
+      if (!frame) return;
+      try {
+        const frameWindow = frame.contentWindow;
+        const frameDocument = frame.contentDocument;
+        if (!frameWindow || !frameDocument) return;
+
+        if (frameWindow.location.pathname.endsWith("/auth.html")) {
+          window.location.assign(frameWindow.location.href);
+          return;
+        }
+
+        const style = frameDocument.createElement("style");
+        style.dataset.dashboardContentFrame = "true";
+        style.textContent = `
+          html, body { margin: 0 !important; min-width: 0 !important; }
+          #navbar-placeholder, .navbar, .layout-sidebar > .sidebar,
+          #sidebarOverlay, .sidebar-overlay, #dashboardTopBar, #footer, .footer {
+            display: none !important;
+          }
+          .layout-sidebar { display: block !important; min-height: 0 !important; }
+          .layout-sidebar > .content-area {
+            display: block !important; width: 100% !important; max-width: none !important;
+            min-height: 100vh !important; margin: 0 !important; padding: 24px !important;
+            overflow: visible !important; box-sizing: border-box !important;
+          }
+          @media (max-width: 768px) {
+            .layout-sidebar > .content-area { padding: 16px !important; }
+          }
+        `;
+        frameDocument.head.appendChild(style);
+
+        if (frameWindow.Auth && typeof frameWindow.Auth.logout === "function") {
+          frameWindow.Auth.logout = () => window.Auth.logout();
+        }
+
+        const currentUrl = new URL(frameWindow.location.href);
+        if (currentUrl.origin === window.location.origin) {
+          document.title = frameDocument.title || originalTitle;
+          window.history.replaceState(
+            { dashboardShell: true, dashboardFrame: true, frameUrl: currentUrl.href },
+            "",
+            `${currentUrl.pathname}${currentUrl.search}${currentUrl.hash}`,
+          );
+          updateActiveLink(currentUrl);
+        }
+      } catch (error) {
+        console.error("[navigation] Không thể đồng bộ nội dung trang:", error);
+      }
+    };
+
+    const createFrame = (url) => {
+      if (!topBar) {
+        topBar = document.getElementById("dashboardTopBar");
+        if (!topBar) {
+          topBar = document.createElement("div");
+          topBar.id = "dashboardTopBar";
+          topBar.className = "dashboard-top-bar";
+        }
+      }
+      frame = document.createElement("iframe");
+      frame.className = "dashboard-content-frame";
+      frame.title = "Nội dung trang";
+      frame.addEventListener("load", syncFrameDocument);
+      contentArea.replaceChildren(topBar, frame);
+      frame.src = url.href;
+    };
+
+    const navigate = (url) => {
+      if (!frame) createFrame(url);
+      else frame.src = url.href;
+      window.history.pushState(
+        { dashboardShell: true, dashboardFrame: true, frameUrl: url.href },
+        "",
+        `${url.pathname}${url.search}${url.hash}`,
+      );
+      updateActiveLink(url);
+      closeMobileSidebar();
+    };
+
+    const restoreInitialContent = () => {
+      if (!frame) return;
+      frame.remove();
+      frame = null;
+      document.title = originalTitle;
+      contentArea.replaceChildren(...originalNodes);
+      updateActiveLink(new URL(window.location.href));
+    };
+
+    window.history.replaceState(
+      { dashboardShell: true, dashboardInitial: true },
+      "",
+      window.location.href,
+    );
+
+    sidebar.addEventListener("click", (event) => {
+      const link = event.target.closest(".sidebar-menu a");
+      if (!link || event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      if (link.target && link.target !== "_self") return;
+
+      const url = new URL(link.href, window.location.href);
+      if (url.origin !== window.location.origin || !url.pathname.startsWith(roleRoot)) return;
+      event.preventDefault();
+      navigate(url);
+    });
+
+    window.addEventListener("popstate", (event) => {
+      if (event.state?.dashboardFrame) {
+        const url = new URL(event.state.frameUrl || window.location.href, window.location.href);
+        if (!frame) createFrame(url);
+        else if (frame.src !== url.href) frame.src = url.href;
+        updateActiveLink(url);
+      } else if (event.state?.dashboardInitial) {
+        restoreInitialContent();
+      } else {
+        window.location.assign(window.location.href);
+      }
+    });
   },
 
   _getAdminMenu(active) {
@@ -309,14 +461,15 @@ window.App = {
       contentArea.prepend(topBar);
     }
 
-    if (!document.getElementById("sidebarToggle")) {
-      const toggleBtn = document.createElement("button");
-      toggleBtn.id = "sidebarToggle";
-      toggleBtn.className = "btn btn-icon btn-secondary sidebar-toggle-btn";
-      toggleBtn.innerHTML = '<i class="fa-solid fa-bars"></i>';
-      toggleBtn.onclick = () => this.toggleSidebar();
-      topBar.prepend(toggleBtn);
+    let toggleButton = document.getElementById("sidebarToggle");
+    if (!toggleButton) {
+      toggleButton = document.createElement("button");
+      toggleButton.id = "sidebarToggle";
+      toggleButton.className = "btn btn-icon btn-secondary sidebar-toggle-btn";
+      toggleButton.innerHTML = '<i class="fa-solid fa-bars"></i>';
+      toggleButton.onclick = () => this.toggleSidebar();
     }
+    if (toggleButton.parentElement !== topBar) topBar.prepend(toggleButton);
   },
 
   toggleSidebar() {
