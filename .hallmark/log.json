@@ -1,0 +1,25 @@
+[
+  {
+    "mode": "redesign",
+    "depth": "full",
+    "scope": "site and app",
+    "shape": "kept public routes; app screens recomposed within the existing shell",
+    "theme": "Studio, adapted to JobViệt brand teal",
+    "axes": "light/roman-serif/warm",
+    "hero": "Poster, existing search-led hero",
+    "nav": "existing masthead preserved",
+    "footer": "existing footer preserved",
+    "imagery": "product interface and job listings already present",
+    "photos": [],
+    "entry": "index.html",
+    "fingerprint": "editorial-paper|serif-display|teal-action|ruled-job-index|existing-masthead|existing-footer",
+    "sections": "Existing content and order retained; surfaces, type, spacing and hierarchy restyled",
+    "signature": "job listings presented as a ruled index",
+    "waived": [
+      "No browser render: puppeteer-core/Chrome unavailable in this environment",
+      "Existing unrelated Hallmark Floor findings remain in legacy CSS and inline page styles"
+    ],
+    "prompt": "Redesign the existing JobViệt site with Hallmark so it feels authored rather than generated; preserve all frontend behavior and backend operations",
+    "draw": "69ecff"
+  }
+]

@@ -1,0 +1,12 @@
+{
+  "scanned": "2026-11-05",
+  "findings": {
+    "fonts": "Inter in existing styles.css; redesign adds Hedvig Letters Serif display with Geist body and system fallbacks",
+    "palette": "JobViệt teal token (#17786e) plus repeated unrelated blues, gradients, shadows and white surfaces",
+    "motion": "CSS transitions and fade animations; several transition: all declarations",
+    "spacing": "Existing 8/12/16/24px rhythm, with repeated inconsistent card padding and radii",
+    "framework": "Vanilla HTML, CSS and JavaScript; Express backend is separate"
+  },
+  "preserve": ["JobViệt teal", "routes", "forms", "IDs", "scripts", "handlers", "API calls", "dashboard shell and navigation"],
+  "introduce": ["editorial job index", "paper and ink surfaces", "serif display hierarchy", "consistent focus and reduced-motion rules", "flat ruled job and data layouts"]
+}
