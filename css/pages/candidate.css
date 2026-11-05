@@ -136,35 +136,3 @@
 .mt-2 {
   margin-top: 16px !important;
 }
-
-/* JobViệt visual refresh */
-.avatar-initial {
-  background: linear-gradient(145deg, #1c7468, #4a9d83);
-  box-shadow: 0 8px 20px rgba(var(--primary-rgb), 0.18);
-}
-
-.avatar-initial-sm {
-  background: #dceee8;
-  color: var(--primary-dark);
-}
-
-.username-disabled {
-  border-color: var(--border-light);
-  background: #edf2ef;
-  color: #7c8a84;
-}
-
-.privacy-status-card {
-  border-color: #cfe6dd;
-  border-radius: 12px;
-  background: #eff8f4;
-}
-
-.cover-letter-preview {
-  border-left-color: var(--primary);
-  color: #586a63;
-}
-
-.interview-info {
-  color: var(--primary-dark);
-}
