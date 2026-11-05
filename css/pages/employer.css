@@ -108,3 +108,26 @@
   color: white;
   margin-bottom: 16px;
 }
+
+/* JobViệt visual refresh */
+.applicant-avatar {
+  background: linear-gradient(145deg, #1c7468, #4a9d83);
+  box-shadow: 0 7px 18px rgba(var(--primary-rgb), 0.16);
+}
+
+.cv-content-box {
+  border-color: var(--border-light);
+  border-radius: 12px;
+  background: #f7faf8;
+}
+
+.interview-form-inline {
+  border-color: rgba(var(--primary-rgb), 0.35);
+  border-radius: 12px;
+  background: #f4f8f6;
+}
+
+.company-logo-preview {
+  background: #dceee8;
+  color: var(--primary-dark);
+}

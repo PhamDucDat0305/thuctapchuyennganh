@@ -277,6 +277,80 @@
   }
 }
 
+/* ========== JOBVIET VISUAL REFRESH ========== */
+.messages-layout {
+  border: 1px solid var(--border-light);
+  border-radius: 17px;
+  background: #fff;
+  box-shadow: 0 14px 38px rgba(25, 57, 49, 0.08);
+}
+
+.conversations-sidebar {
+  border-color: var(--border-light);
+  background: #fbfcfb;
+}
+
+.conv-header {
+  padding: 21px 20px;
+  border-color: var(--border-light);
+  color: var(--text);
+  font-size: 1.2rem;
+  letter-spacing: -0.035em;
+}
+
+.conv-item:hover {
+  background: #f1f7f4;
+}
+
+.conv-item.active {
+  background: #e9f4ef;
+}
+
+.conv-item.active .conv-name {
+  color: var(--primary-dark);
+}
+
+.conv-avatar {
+  background: #dceee8;
+  color: var(--primary-dark);
+  box-shadow: none;
+}
+
+.conv-name {
+  color: var(--text);
+}
+
+.conv-last-msg {
+  color: var(--text-light);
+}
+
+.chat-header {
+  border-color: var(--border-light);
+  background: rgba(255, 255, 255, 0.94);
+}
+
+.chat-messages {
+  background-color: #f8faf9;
+  background-image: radial-gradient(#dfe9e4 0.7px, transparent 0.7px);
+  background-size: 22px 22px;
+}
+
+.msg-sent {
+  background: var(--primary);
+  box-shadow: 0 5px 12px rgba(var(--primary-rgb), 0.18);
+}
+
+.msg-received {
+  border-color: #e3ebe7;
+  background: #fff;
+  color: #31423c;
+}
+
+.conv-unread {
+  background: #d97745;
+  box-shadow: none;
+}
+
 @media (max-width: 480px) {
   .conversations-sidebar {
     width: 70px;

@@ -2,16 +2,20 @@
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap");
 
 :root {
-  --primary: #0ea5e9;
-  --primary-rgb: 14, 165, 233;
-  --primary-light: #7dd3fc;
-  --primary-dark: #0284c7;
-  --bg: #f8fafc;
-  --text: #0f172a;
-  --text-light: #64748b;
-  --border: #e2e8f0;
-  --border-light: #f1f5f9;
-  --radius: 12px;
+  --primary: #17786e;
+  --primary-rgb: 23, 120, 110;
+  --primary-light: #d7eee9;
+  --primary-dark: #105e56;
+  --accent: #eaa96b;
+  --bg: #f4f7f5;
+  --text: #182622;
+  --text-light: #667570;
+  --border: #dce6e1;
+  --border-light: #eaf0ed;
+  --surface: #ffffff;
+  --surface-muted: #f8faf9;
+  --radius: 14px;
+  --shadow-soft: 0 12px 32px rgba(25, 57, 49, 0.07);
   --font: "Inter", sans-serif;
 }
 
@@ -256,6 +260,218 @@ a {
   .footer-grid {
     grid-template-columns: 1fr;
     gap: 30px;
+  }
+}
+
+/* ========== JOBVIET VISUAL REFRESH ========== */
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  line-height: 1.65;
+  text-rendering: optimizeLegibility;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  color: var(--text);
+  letter-spacing: -0.035em;
+  line-height: 1.2;
+}
+
+p {
+  text-wrap: pretty;
+}
+
+::selection {
+  background: rgba(var(--primary-rgb), 0.18);
+  color: var(--primary-dark);
+}
+
+:focus-visible {
+  outline: 3px solid rgba(var(--primary-rgb), 0.28);
+  outline-offset: 3px;
+}
+
+.btn {
+  min-height: 42px;
+  border-radius: 11px;
+  padding: 10px 18px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    background-color 0.18s ease,
+    color 0.18s ease;
+}
+
+.btn-primary {
+  background: var(--primary);
+  color: #fff;
+  box-shadow: 0 5px 14px rgba(var(--primary-rgb), 0.2);
+}
+
+.btn-primary:hover {
+  background: var(--primary-dark);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px rgba(var(--primary-rgb), 0.25);
+}
+
+.btn-outline {
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--primary-dark);
+}
+
+.btn-outline:hover {
+  border-color: rgba(var(--primary-rgb), 0.35);
+  background: #eff8f5;
+  color: var(--primary-dark);
+}
+
+.btn-secondary {
+  background: #edf2ef;
+  color: #34443e;
+}
+
+.btn-secondary:hover {
+  background: #e2ebe6;
+  color: var(--text);
+}
+
+.form-input,
+.form-select,
+.form-textarea,
+input:not([type="checkbox"]):not([type="radio"]),
+select,
+textarea {
+  border-color: var(--border);
+  border-radius: 11px;
+  background: #fbfcfb;
+  color: var(--text);
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    background-color 0.18s ease;
+}
+
+.form-input:focus,
+.form-select:focus,
+.form-textarea:focus,
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: var(--primary);
+  background: #fff;
+  box-shadow: 0 0 0 4px rgba(var(--primary-rgb), 0.1);
+  outline: none;
+}
+
+.form-label {
+  color: #34433e;
+  font-size: 0.9rem;
+  font-weight: 650;
+}
+
+.card,
+.table-wrapper,
+.stat-card {
+  border: 1px solid var(--border-light);
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: var(--shadow-soft);
+}
+
+.card:hover,
+.stat-card:hover {
+  box-shadow: 0 16px 36px rgba(25, 57, 49, 0.1);
+}
+
+.section {
+  padding-block: 56px;
+}
+
+.section-header {
+  align-items: end;
+  gap: 20px;
+}
+
+.section-header h2 {
+  font-size: clamp(1.5rem, 2.3vw, 2rem);
+  font-weight: 750;
+}
+
+.section-desc {
+  color: var(--text-light);
+}
+
+.footer {
+  background: #132d28;
+  color: #f5faf7;
+}
+
+.footer-bottom {
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.floating-chat-btn {
+  background: var(--primary);
+  box-shadow: 0 8px 22px rgba(var(--primary-rgb), 0.28);
+}
+
+.floating-chat-btn:hover,
+.w-send-btn:hover {
+  background: var(--primary-dark);
+}
+
+.w-chat-header {
+  background: linear-gradient(135deg, #1c7264 0%, #153d36 100%);
+}
+
+.w-chat-avatar,
+.chat-widget .conv-avatar {
+  background: #dceee8;
+  color: var(--primary-dark);
+}
+
+.w-send-btn {
+  background: var(--primary);
+  box-shadow: 0 3px 9px rgba(var(--primary-rgb), 0.2);
+}
+
+.w-chat-input:focus {
+  box-shadow: 0 0 0 2px rgba(var(--primary-rgb), 0.17);
+}
+
+.chat-widget .conv-item:hover {
+  background: #f1f7f4;
+}
+
+.chat-widget .msg-sent {
+  background: var(--primary) !important;
+}
+
+.chat-widget .msg-received {
+  border-color: var(--border-light) !important;
+  background: #f1f6f3 !important;
+  color: var(--text) !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }
 
