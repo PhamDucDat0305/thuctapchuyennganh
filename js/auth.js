@@ -1,6 +1,129 @@
 /* ========== SQL SERVER SESSION AUTHENTICATION ========== */
 import { apiRequest } from "./api.js";
 
+const SESSION_IDLE_TIMEOUT_MS = 30 * 60 * 1000;
+const SESSION_KEEPALIVE_MS = 5 * 60 * 1000;
+const LAST_ACTIVITY_KEY = "jvLastActivityAt";
+const ACTIVITY_EVENTS = ["pointerdown", "pointermove", "keydown", "scroll", "touchstart", "click"];
+let idleTimeoutHandle = null;
+let keepaliveHandle = null;
+let lastActivityAt = 0;
+let lastActivitySavedAt = 0;
+let activityListenersInstalled = false;
+
+function storedActivityTime() {
+  const value = Number(localStorage.getItem(LAST_ACTIVITY_KEY));
+  return Number.isFinite(value) ? value : 0;
+}
+
+function isSessionIdle() {
+  lastActivityAt = Math.max(lastActivityAt, storedActivityTime());
+  return Date.now() - lastActivityAt >= SESSION_IDLE_TIMEOUT_MS;
+}
+
+function scheduleIdleLogout() {
+  clearTimeout(idleTimeoutHandle);
+  const remaining = SESSION_IDLE_TIMEOUT_MS - (Date.now() - Math.max(lastActivityAt, storedActivityTime()));
+  if (remaining <= 0) {
+    window.Auth.logout();
+    return;
+  }
+  idleTimeoutHandle = setTimeout(() => window.Auth.logout(), remaining);
+}
+
+function recordUserActivity() {
+  if (!window.Auth?.getCurrentUser()) return;
+  lastActivityAt = Date.now();
+  if (lastActivityAt - lastActivitySavedAt >= 10_000) {
+    localStorage.setItem(LAST_ACTIVITY_KEY, String(lastActivityAt));
+    lastActivitySavedAt = lastActivityAt;
+  }
+  scheduleIdleLogout();
+}
+
+function handleSessionStorage(event) {
+  if (event.key === LAST_ACTIVITY_KEY) {
+    lastActivityAt = Math.max(lastActivityAt, Number(event.newValue) || 0);
+    scheduleIdleLogout();
+  } else if (event.key === "currentUser") {
+    if (!event.newValue) {
+      stopSessionIdleMonitor();
+      sessionStorage.removeItem("loggedInUser");
+      const authPath = location.pathname.includes("/employer/") || location.pathname.includes("/candidate/")
+        ? "../auth.html"
+        : "auth.html";
+      window.location.href = authPath;
+    } else {
+      startSessionIdleMonitor();
+    }
+  }
+}
+
+function handleVisibilityChange() {
+  if (document.visibilityState !== "visible") return;
+  if (isSessionIdle()) {
+    window.Auth.logout();
+    return;
+  }
+  recordUserActivity();
+}
+
+function stopSessionIdleMonitor() {
+  clearTimeout(idleTimeoutHandle);
+  clearInterval(keepaliveHandle);
+  idleTimeoutHandle = null;
+  keepaliveHandle = null;
+  if (!activityListenersInstalled) return;
+  ACTIVITY_EVENTS.forEach((eventName) => document.removeEventListener(eventName, recordUserActivity));
+  document.removeEventListener("visibilitychange", handleVisibilityChange);
+  window.removeEventListener("focus", handleVisibilityChange);
+  window.removeEventListener("storage", handleSessionStorage);
+  activityListenersInstalled = false;
+}
+
+function startSessionIdleMonitor(resetActivity = false) {
+  if (!window.Auth?.getCurrentUser()) return;
+  const now = Date.now();
+  const stored = storedActivityTime();
+  if (resetActivity || !stored) {
+    lastActivityAt = now;
+    lastActivitySavedAt = now;
+    localStorage.setItem(LAST_ACTIVITY_KEY, String(now));
+  } else {
+    lastActivityAt = Math.max(lastActivityAt, stored);
+    lastActivitySavedAt = stored;
+  }
+
+  if (isSessionIdle()) {
+    window.Auth.logout();
+    return;
+  }
+  if (!activityListenersInstalled) {
+    ACTIVITY_EVENTS.forEach((eventName) => document.addEventListener(eventName, recordUserActivity, { passive: true }));
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("focus", handleVisibilityChange);
+    window.addEventListener("storage", handleSessionStorage);
+    activityListenersInstalled = true;
+  }
+  scheduleIdleLogout();
+  clearInterval(keepaliveHandle);
+  keepaliveHandle = setInterval(async () => {
+    if (!window.Auth?.getCurrentUser()) {
+      stopSessionIdleMonitor();
+      return;
+    }
+    if (isSessionIdle()) {
+      window.Auth.logout();
+      return;
+    }
+    try {
+      await apiRequest("/me");
+    } catch (error) {
+      if (error.status === 401) window.Auth.logout();
+    }
+  }, SESSION_KEEPALIVE_MS);
+}
+
 /**
  * Authentication management object
  */
@@ -46,6 +169,7 @@ window.Auth = {
         }),
       });
       localStorage.setItem("currentUser", JSON.stringify(result.user));
+      startSessionIdleMonitor(true);
       return { success: true, user: result.user };
     } catch (error) {
       console.error("Auth: register error", error);
@@ -63,6 +187,7 @@ window.Auth = {
         body: JSON.stringify({ email, password }),
       });
       localStorage.setItem("currentUser", JSON.stringify(result.user));
+      startSessionIdleMonitor(true);
       return { success: true, user: result.user };
     } catch (error) {
       console.error("Auth: login error", error);
@@ -74,12 +199,14 @@ window.Auth = {
    * Log out current user
    */
   async logout() {
+    stopSessionIdleMonitor();
     try {
       await apiRequest("/auth/logout", { method: "POST" });
     } catch (error) {
       console.error("Auth: logout error", error);
     } finally {
       localStorage.removeItem("currentUser");
+      localStorage.removeItem(LAST_ACTIVITY_KEY);
       sessionStorage.removeItem("loggedInUser");
 
       // Redirect to auth page based on folder depth
@@ -134,6 +261,7 @@ window.Auth = {
     }
 
     if (!user) {
+      stopSessionIdleMonitor();
       window.location.href = authPath;
       return null;
     }
@@ -148,14 +276,18 @@ window.Auth = {
     // Verify the cookie-backed session on the server; localStorage is only UI cache.
     apiRequest("/me").then(({ user: current }) => {
       localStorage.setItem("currentUser", JSON.stringify(current));
+      startSessionIdleMonitor();
       if (allowedRoles && !allowedRoles.includes(current.role)) {
         localStorage.removeItem("currentUser");
         window.location.href = indexPath;
       }
     }).catch(() => {
+      stopSessionIdleMonitor();
       localStorage.removeItem("currentUser");
       window.location.href = authPath;
     });
     return user;
   },
 };
+
+startSessionIdleMonitor();

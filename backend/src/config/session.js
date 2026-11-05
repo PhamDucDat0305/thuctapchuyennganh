@@ -3,7 +3,7 @@ const MSSQLStore = require('connect-mssql-v2');
 const { buildConfig } = require('./database');
 
 const SESSION_COOKIE_NAME = 'jv.sid';
-const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+const IDLE_TIMEOUT_MS = 30 * 60 * 1000;
 let sessionStore = null;
 
 function createSessionMiddleware() {
@@ -16,7 +16,9 @@ function createSessionMiddleware() {
   // (phiên vẫn còn sau khi backend khởi động lại).
   sessionStore = new MSSQLStore(buildConfig(), {
     table: '[dbo].[sessions]',
-    ttl: SEVEN_DAYS_MS,
+    ttl: IDLE_TIMEOUT_MS,
+    autoRemove: true,
+    autoRemoveInterval: 10 * 60 * 1000,
     retries: 3,
     retryDelay: 500,
   });
@@ -28,13 +30,14 @@ function createSessionMiddleware() {
     name: SESSION_COOKIE_NAME,
     secret,
     store: sessionStore,
+    rolling: true,
     resave: false,
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production', // bật khi chạy HTTPS
       sameSite: 'lax',
-      maxAge: SEVEN_DAYS_MS,
+      maxAge: IDLE_TIMEOUT_MS,
     },
   });
 }
