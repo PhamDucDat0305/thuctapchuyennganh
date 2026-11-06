@@ -79,61 +79,13 @@
     <title>Chi tiết công việc — JobViệt</title>
     <link rel="stylesheet" href="css/styles.css" />
     <link rel="stylesheet" href="css/navbar.css" />
+    <link rel="stylesheet" href="css/pages/job-detail.css" />
     <link
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css"
     />
-    <style>
-      .detail-container {
-        max-width: 800px;
-        margin: 40px auto;
-        padding: 0 20px;
-      }
-      .job-header {
-        background: white;
-        padding: 32px;
-        border-radius: 16px;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
-        margin-bottom: 24px;
-      }
-      .job-body {
-        background: white;
-        padding: 32px;
-        border-radius: 16px;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
-      }
-      .section-title {
-        font-size: 1.2rem;
-        font-weight: 700;
-        margin: 24px 0 12px;
-        color: var(--primary);
-        display: flex;
-        align-items: center;
-        gap: 8px;
-      }
-      .meta-item {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        color: var(--text-light);
-        margin-bottom: 8px;
-      }
-      .apply-section {
-        margin-top: 32px;
-        padding-top: 24px;
-        border-top: 1px solid var(--border-light);
-        display: flex;
-        justify-content: flex-end;
-        gap: 12px;
-      }
-      .btn-saved {
-        color: var(--primary) !important;
-        border-color: var(--primary) !important;
-        background: rgba(var(--primary-rgb), 0.1) !important;
-      }
-    </style>
   </head>
-  <body>
+  <body class="job-detail-page">
     <div id="navbar-placeholder"></div>
 
     <div class="detail-container">
@@ -191,36 +143,49 @@
 
         document.title = `${job.title} — JobViệt`;
 
+        const salary = job.salaryMin != null && job.salaryMax != null
+          ? `${(Number(job.salaryMin) / 1000000).toLocaleString("vi-VN")} - ${(Number(job.salaryMax) / 1000000).toLocaleString("vi-VN")} triệu VND/tháng`
+          : (job.salary || "Thỏa thuận");
+        const deadline = job.expiresAt
+          ? new Date(job.expiresAt).toLocaleDateString("vi-VN")
+          : "Theo thông báo của nhà tuyển dụng";
+        const companyLink = window.App.profileLink("company", job.companyId, job.companyName);
         document.getElementById("jobDetail").innerHTML = `
-        <div class="job-header animate-fade-up">
-          <h1 style="font-size: 2rem; margin-bottom: 12px; color: var(--text);">${escapeHtml(job.title)}</h1>
-          <div style="font-size: 1.2rem; color: var(--primary); font-weight: 600; margin-bottom: 20px;">${window.App.profileLink("company", job.companyId, job.companyName)}</div>
-          <div class="grid grid-3">
-            <div class="meta-item"><i class="fa-solid fa-location-dot text-danger"></i> ${escapeHtml(job.location)}</div>
-            <div class="meta-item"><i class="fa-solid fa-money-bill-wave text-success"></i> ${escapeHtml(job.salary)}</div>
-            <div class="meta-item"><i class="fa-solid fa-clock text-info"></i> ${job.type === "full-time" ? "Toàn thời gian" : "Bán thời gian"}</div>
+        <section class="detail-card detail-hero animate-fade-up">
+          <h1 class="detail-job-title">${escapeHtml(job.title)}</h1>
+          <div class="detail-salary">${escapeHtml(salary)}</div>
+          <div class="detail-company">${companyLink}</div>
+          <div class="detail-facts">
+            <div class="detail-fact"><span class="detail-fact-icon"><i class="fa-solid fa-location-dot"></i></span><span><small>Địa điểm</small><strong>${escapeHtml(job.location || "Chưa cập nhật")}</strong></span></div>
+            <div class="detail-fact"><span class="detail-fact-icon"><i class="fa-solid fa-briefcase"></i></span><span><small>Kinh nghiệm</small><strong>${escapeHtml(job.experience || "Không yêu cầu")}</strong></span></div>
+            <div class="detail-fact"><span class="detail-fact-icon"><i class="fa-regular fa-calendar"></i></span><span><small>Hạn ứng tuyển</small><strong>${escapeHtml(deadline)}</strong></span></div>
           </div>
-        </div>
+          ${currentUser?.role === "employer" ? "" : `<div class="detail-actions">
+            <button class="detail-apply-btn" onclick="applyJob('${job.id}')"><i class="fa-solid fa-paper-plane"></i> Ứng tuyển ngay</button>
+            <button id="saveBtn" class="detail-save-btn" onclick="toggleSave('${job.id}')"><i class="fa-regular fa-heart"></i> Lưu tin</button>
+          </div>`}
+        </section>
 
-        <div class="job-body animate-fade-up delay-1">
-          <div class="section-title"><i class="fa-solid fa-file-lines"></i> Mô tả công việc</div>
-          <p style="line-height: 1.8; color: var(--text); white-space: pre-line;">${escapeHtml(job.description)}</p>
+        <aside class="detail-notice"><i class="fa-solid fa-circle-info"></i><span>Tin đăng được cung cấp chủ động bởi <strong>Nhà tuyển dụng.</strong></span></aside>
 
-          <div class="section-title"><i class="fa-solid fa-list-check"></i> Yêu cầu ứng viên</div>
-          <p style="line-height: 1.8; color: var(--text); white-space: pre-line;">${escapeHtml(job.requirements)}</p>
+        <section class="detail-card detail-section animate-fade-up delay-1">
+          <h2 class="detail-section-title">Tổng quan</h2>
+          <div class="detail-tag-row"><strong>Yêu cầu:</strong><div class="detail-tags">${job.experience ? `<span>${escapeHtml(job.experience)}</span>` : "<span>Chưa cập nhật</span>"}</div></div>
+          <div class="detail-tag-row"><strong>Chuyên môn:</strong><div class="detail-tags"><span>${escapeHtml(job.category || "Chưa phân loại")}</span></div></div>
+          <div class="detail-overview-bottom"></div>
+        </section>
 
-          <div class="section-title"><i class="fa-solid fa-gift"></i> Quyền lợi</div>
-          <p style="line-height: 1.8; color: var(--text); white-space: pre-line;">${escapeHtml(job.benefits)}</p>
+        <section class="detail-card detail-section animate-fade-up delay-1">
+          <h2 class="detail-section-title">Mô tả công việc</h2>
+          <div class="detail-copy">${escapeHtml(job.description || "").replace(/\r?\n/g, "<br>")}</div>
+        </section>
 
-          <div class="apply-section">
-            <button id="saveBtn" class="btn btn-large btn-outline" onclick="toggleSave('${job.id}')">
-              <i class="fa-regular fa-bookmark"></i> Lưu công việc
-            </button>
-            <button class="btn btn-large btn-primary" onclick="applyJob('${job.id}')">
-              <i class="fa-solid fa-paper-plane"></i> Ứng tuyển ngay
-            </button>
-          </div>
-        </div>
+        <section class="detail-card detail-section">
+          <h2 class="detail-section-title">Yêu cầu ứng viên</h2>
+          <div class="detail-copy">${escapeHtml(job.requirements || "").replace(/\r?\n/g, "<br>")}</div>
+        </section>
+
+        ${job.benefits ? `<section class="detail-card detail-section"><h2 class="detail-section-title">Quyền lợi ứng viên</h2><div class="detail-copy">${escapeHtml(job.benefits).replace(/\r?\n/g, "<br>")}</div></section>` : ""}
       `;
 
         // Kiểm tra trạng thái lưu
@@ -238,11 +203,11 @@
         const isSaved = await window.DB.isJobSaved(user.id, jobId);
         if (isSaved) {
           saveBtn.classList.add("btn-saved");
-          saveBtn.innerHTML = '<i class="fa-solid fa-bookmark"></i> Đã lưu';
+          saveBtn.innerHTML = '<i class="fa-solid fa-heart"></i> Đã lưu';
         } else {
           saveBtn.classList.remove("btn-saved");
           saveBtn.innerHTML =
-            '<i class="fa-regular fa-bookmark"></i> Lưu công việc';
+            '<i class="fa-regular fa-heart"></i> Lưu tin';
         }
       }
 

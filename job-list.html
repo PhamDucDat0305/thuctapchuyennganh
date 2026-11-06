@@ -171,6 +171,7 @@
 
       // Read URL params
       const params = new URLSearchParams(location.search);
+      const companyId = params.get("companyId");
       if (params.get("q"))
         document.getElementById("searchInput").value = params.get("q");
       if (params.get("cat"))
@@ -179,6 +180,7 @@
       async function getFilteredJobs() {
         let allJobs = await window.DB.getJobs();
         let jobs = allJobs.filter((j) => j.status === "active");
+        if (companyId) jobs = jobs.filter((job) => String(job.companyId) === String(companyId));
         const q = document
           .getElementById("searchInput")
           .value.trim()

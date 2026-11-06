@@ -111,6 +111,12 @@
         const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({
           "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
         })[char]);
+        const toLocalDateTime = (value) => {
+          if (!value) return "";
+          const date = new Date(value);
+          if (Number.isNaN(date.getTime())) return "";
+          return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+        };
         const user = window.Auth.requireAuth(["employer"]);
         if (!user) return;
         window.App.renderSidebar("employer", "myjobs");
@@ -124,19 +130,25 @@
         } else {
           formContainer.innerHTML = `
           <form onsubmit="saveJob(event)">
-            <div class="form-group"><label class="form-label">Tiêu đề</label><input class="form-input" id="title" value="${escapeHtml(job.title)}" required></div>
-            <div class="form-row">
-              <div class="form-group"><label class="form-label">Mức lương</label><input class="form-input" id="salary" value="${escapeHtml(job.salary)}" required></div>
-              <div class="form-group"><label class="form-label">Địa điểm</label><input class="form-input" id="location" value="${escapeHtml(job.location)}" required></div>
-            </div>
-            <div class="form-row">
-              <div class="form-group"><label class="form-label">Loại hình</label><select class="form-select" id="type"><option ${job.type === "full-time" ? "selected" : ""}>full-time</option><option ${job.type === "part-time" ? "selected" : ""}>part-time</option></select></div>
-              <div class="form-group"><label class="form-label">Kinh nghiệm</label><select class="form-select" id="experience"><option ${job.experience === "0-1 năm" ? "selected" : ""}>0-1 năm</option><option ${job.experience === "1-3 năm" ? "selected" : ""}>1-3 năm</option><option ${job.experience === "2-5 năm" ? "selected" : ""}>2-5 năm</option><option ${job.experience === "5+ năm" ? "selected" : ""}>5+ năm</option></select></div>
-            </div>
-            <div class="form-group"><label class="form-label">Danh mục</label><select class="form-select" id="category"><option ${job.category === "Công nghệ" ? "selected" : ""}>Công nghệ</option><option ${job.category === "Marketing" ? "selected" : ""}>Marketing</option><option ${job.category === "Thiết kế" ? "selected" : ""}>Thiết kế</option><option ${job.category === "Kinh doanh" ? "selected" : ""}>Kinh doanh</option><option ${job.category === "Hành chính" ? "selected" : ""}>Hành chính</option><option ${job.category === "Tài chính" ? "selected" : ""}>Tài chính</option></select></div>
-            <div class="form-group"><label class="form-label">Mô tả</label><textarea class="form-textarea" id="description" required>${escapeHtml(job.description)}</textarea></div>
-            <div class="form-group"><label class="form-label">Yêu cầu</label><textarea class="form-textarea" id="requirements" required>${escapeHtml(job.requirements)}</textarea></div>
-            <div class="form-group"><label class="form-label">Quyền lợi</label><textarea class="form-textarea" id="benefits">${escapeHtml(job.benefits)}</textarea></div>
+            <section class="job-form-section"><h2>Tổng quan</h2>
+              <div class="form-group"><label class="form-label" for="title">Tiêu đề</label><input class="form-input" id="title" value="${escapeHtml(job.title)}" required></div>
+              <div class="form-row">
+                <div class="form-group"><label class="form-label" for="category">Danh mục</label><select class="form-select" id="category"><option ${job.category === "Công nghệ" ? "selected" : ""}>Công nghệ</option><option ${job.category === "Marketing" ? "selected" : ""}>Marketing</option><option ${job.category === "Thiết kế" ? "selected" : ""}>Thiết kế</option><option ${job.category === "Kinh doanh" ? "selected" : ""}>Kinh doanh</option><option ${job.category === "Hành chính" ? "selected" : ""}>Hành chính</option><option ${job.category === "Tài chính" ? "selected" : ""}>Tài chính</option></select></div>
+                <div class="form-group"><label class="form-label" for="experience">Kinh nghiệm</label><select class="form-select" id="experience"><option ${job.experience === "0-1 năm" ? "selected" : ""}>0-1 năm</option><option ${job.experience === "1-3 năm" ? "selected" : ""}>1-3 năm</option><option ${job.experience === "2-5 năm" ? "selected" : ""}>2-5 năm</option><option ${job.experience === "5+ năm" ? "selected" : ""}>5+ năm</option></select></div>
+              </div>
+            </section>
+            <section class="job-form-section"><h2>Mô tả công việc</h2><div class="form-group"><label class="form-label" for="description">Mô tả *</label><textarea class="form-textarea" id="description" required>${escapeHtml(job.description)}</textarea></div></section>
+            <section class="job-form-section"><h2>Yêu cầu ứng viên</h2><div class="form-group"><label class="form-label" for="requirements">Yêu cầu *</label><textarea class="form-textarea" id="requirements" required>${escapeHtml(job.requirements)}</textarea></div></section>
+            <section class="job-form-section"><h2>Thu nhập</h2><div class="form-row">
+              <div class="form-group"><label class="form-label" for="salaryMin">Lương tối thiểu (triệu VND/tháng)</label><input class="form-input" id="salaryMin" type="number" min="0.1" max="1000000" step="0.1" value="${job.salaryMin == null ? "" : Number(job.salaryMin) / 1000000}" placeholder="VD: 20"></div>
+              <div class="form-group"><label class="form-label" for="salaryMax">Lương tối đa (triệu VND/tháng)</label><input class="form-input" id="salaryMax" type="number" min="0.1" max="1000000" step="0.1" value="${job.salaryMax == null ? "" : Number(job.salaryMax) / 1000000}" placeholder="VD: 35"></div>
+            </div><p class="form-hint">Có thể để trống nếu đang sửa tin cũ chưa có khoảng lương.</p></section>
+            <section class="job-form-section"><h2>Quyền lợi ứng viên</h2><div class="form-group"><label class="form-label" for="benefits">Quyền lợi</label><textarea class="form-textarea" id="benefits">${escapeHtml(job.benefits)}</textarea></div></section>
+            <section class="job-form-section"><h2>Địa điểm và thời gian</h2><div class="form-row">
+              <div class="form-group"><label class="form-label" for="location">Địa điểm *</label><input class="form-input" id="location" value="${escapeHtml(job.location)}" required></div>
+              <div class="form-group"><label class="form-label" for="type">Hình thức làm việc</label><select class="form-select" id="type"><option value="full-time" ${job.type === "full-time" ? "selected" : ""}>Toàn thời gian</option><option value="part-time" ${job.type === "part-time" ? "selected" : ""}>Bán thời gian</option></select></div>
+            </div></section>
+            <section class="job-form-section"><h2>Thời hạn ứng tuyển</h2><div class="form-group"><label class="form-label" for="expiresAt">Nhận hồ sơ đến</label><input class="form-input" type="datetime-local" id="expiresAt" value="${toLocalDateTime(job.expiresAt)}"><p class="form-hint">Để trống nếu tin không có hạn tự đóng.</p></div></section>
             <div class="flex" style="gap:12px"><button type="submit" class="btn btn-primary btn-large"><i class="fa-solid fa-floppy-disk"></i> Lưu thay đổi</button><a href="my-jobs.html" class="btn btn-secondary btn-large">Hủy</a></div>
           </form>`;
 
@@ -147,9 +159,13 @@
             btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Đang cập nhật...';
 
             try {
-              await window.DB.updateJob(jobId, {
+              const salaryMinInput = document.getElementById("salaryMin").value;
+              const salaryMaxInput = document.getElementById("salaryMax").value;
+              if (Boolean(salaryMinInput) !== Boolean(salaryMaxInput)) {
+                throw new Error("Hãy nhập cả lương tối thiểu và tối đa.");
+              }
+              const update = {
                 title: document.getElementById("title").value.trim(),
-                salary: document.getElementById("salary").value.trim(),
                 location: document.getElementById("location").value.trim(),
                 type: document.getElementById("type").value,
                 experience: document.getElementById("experience").value,
@@ -157,7 +173,15 @@
                 description: document.getElementById("description").value.trim(),
                 requirements: document.getElementById("requirements").value.trim(),
                 benefits: document.getElementById("benefits").value.trim(),
-              });
+                expiresAt: document.getElementById("expiresAt").value
+                  ? new Date(document.getElementById("expiresAt").value).toISOString()
+                  : null,
+              };
+              if (salaryMinInput && salaryMaxInput) {
+                update.salaryMin = Math.round(Number(salaryMinInput) * 1000000);
+                update.salaryMax = Math.round(Number(salaryMaxInput) * 1000000);
+              }
+              await window.DB.updateJob(jobId, update);
               Toast.success("Cập nhật thành công!");
               setTimeout(() => (location.href = "my-jobs.html"), 800);
             } catch (error) {

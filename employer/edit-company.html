@@ -81,12 +81,13 @@
     <link rel="stylesheet" href="../css/navbar.css" />
     <link rel="stylesheet" href="../css/pages/dashboard.css" />
     <link rel="stylesheet" href="../css/pages/employer.css" />
+    <link rel="stylesheet" href="../css/pages/company-profile.css" />
     <link
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css"
     />
   </head>
-  <body>
+  <body class="company-profile-page">
     <div id="navbar-placeholder"></div>
     <div class="layout-sidebar">
       <aside class="sidebar" id="sidebar"></aside>
@@ -97,18 +98,22 @@
           </h1>
         </div>
         <div class="card card-employer-form">
-          <form onsubmit="window.saveCompany(event)">
+          <form onsubmit="window.saveCompany(event)" id="companyEditForm">
             <div class="form-group">
-              <label class="form-label">Tên công ty</label
+              <label class="form-label" for="name">Tên công ty *</label
               ><input class="form-input" id="name" required />
             </div>
             <div class="form-group">
-              <label class="form-label">Logo (emoji hoặc icon)</label
-              ><input class="form-input" id="logo" placeholder="🏢" />
+              <label class="form-label" for="logoFile">Logo công ty</label>
+              <div class="company-logo-upload">
+                <div class="company-logo-upload-preview" id="logoPreview"><i class="fa-regular fa-image"></i></div>
+                <div><input class="form-input" id="logoFile" type="file" accept="image/png,image/jpeg,image/webp" />
+                  <p class="form-hint">PNG, JPG hoặc WEBP; dung lượng tối đa 2MB.</p></div>
+              </div>
             </div>
             <div class="form-row">
               <div class="form-group">
-                <label class="form-label">Ngành nghề</label
+                <label class="form-label" for="industry">Ngành nghề</label
                 ><input
                   class="form-input"
                   id="industry"
@@ -116,26 +121,27 @@
                 />
               </div>
               <div class="form-group">
-                <label class="form-label">Quy mô</label
+                <label class="form-label" for="size">Quy mô</label
                 ><input class="form-input" id="size" placeholder="100-500" />
               </div>
             </div>
             <div class="form-row">
               <div class="form-group">
-                <label class="form-label">Địa điểm</label
+                <label class="form-label" for="location">Địa điểm</label
                 ><input class="form-input" id="location" />
               </div>
               <div class="form-group">
-                <label class="form-label">Website</label
+                <label class="form-label" for="website">Website</label
                 ><input
                   class="form-input"
                   id="website"
-                  placeholder="https://"
+                  type="url"
+                  placeholder="https://congty.vn"
                 />
               </div>
             </div>
             <div class="form-group">
-              <label class="form-label">Mô tả công ty</label
+              <label class="form-label" for="description">Mô tả công ty</label
               ><textarea class="form-textarea" id="description"></textarea>
             </div>
             <div class="flex" style="gap: 12px">
@@ -161,6 +167,23 @@
         const user = window.Auth.requireAuth(["employer"]);
         if (!user) return;
         window.App.renderSidebar("employer", "edit_company");
+        let existingCompany = null;
+        const fileInput = document.getElementById("logoFile");
+        const preview = document.getElementById("logoPreview");
+        let previewObjectUrl = null;
+
+        fileInput.addEventListener("change", () => {
+          const file = fileInput.files?.[0];
+          if (!file) return;
+          if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type) || file.size > 2 * 1024 * 1024) {
+            fileInput.value = "";
+            Toast.error("Chọn ảnh PNG, JPG hoặc WEBP có dung lượng tối đa 2MB.");
+            return;
+          }
+          if (previewObjectUrl) URL.revokeObjectURL(previewObjectUrl);
+          previewObjectUrl = URL.createObjectURL(file);
+          preview.innerHTML = `<img src="${previewObjectUrl}" alt="Xem trước logo">`;
+        });
 
         window.saveCompany = async function(e) {
           e.preventDefault();
@@ -169,13 +192,29 @@
           btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Đang lưu...';
 
           try {
+            const website = document.getElementById("website").value.trim();
+            if (website) {
+              const parsedWebsite = new URL(website);
+              if (!['http:', 'https:'].includes(parsedWebsite.protocol)) throw new Error("Website phải là địa chỉ HTTP hoặc HTTPS hợp lệ.");
+            }
+            const selectedLogo = fileInput.files?.[0];
+            if (selectedLogo && (!['image/png', 'image/jpeg', 'image/webp'].includes(selectedLogo.type) || selectedLogo.size > 2 * 1024 * 1024)) {
+              throw new Error("Logo phải là PNG, JPG hoặc WEBP và tối đa 2MB.");
+            }
+            let logo = existingCompany?.logo || "";
+            let logoUrl = existingCompany?.logoUrl || "";
+            if (selectedLogo) {
+              logoUrl = await window.DB.uploadCompanyLogo(selectedLogo);
+              logo = logoUrl;
+            }
             const data = {
               name: document.getElementById("name").value.trim(),
-              logo: document.getElementById("logo").value.trim() || "🏢",
+              logo,
+              logoUrl,
               industry: document.getElementById("industry").value.trim(),
               size: document.getElementById("size").value.trim(),
               location: document.getElementById("location").value.trim(),
-              website: document.getElementById("website").value.trim(),
+              website,
               description: document.getElementById("description").value.trim(),
             };
 
@@ -197,13 +236,22 @@
 
         try {
           const c = (await window.DB.getCompanyByEmployer(user.id)) || {};
+          existingCompany = c;
           document.getElementById("name").value = c.name || "";
-          document.getElementById("logo").value = c.logo || "";
           document.getElementById("industry").value = c.industry || "";
           document.getElementById("size").value = c.size || "";
           document.getElementById("location").value = c.location || "";
           document.getElementById("website").value = c.website || "";
           document.getElementById("description").value = c.description || "";
+          const image = c.logoUrl || c.logo;
+          if (image && (/^https?:\/\//i.test(image) || /^\/employer\/uploads\/companies\//.test(image))) {
+            const safeImage = String(image).replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]);
+            preview.innerHTML = `<img src="${safeImage}" alt="Logo công ty">`;
+          } else {
+            const initial = String(c.name || "C").trim().charAt(0).toUpperCase().replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]);
+            preview.innerHTML = `<span>${initial}</span>`;
+          }
+          if (location.hash) requestAnimationFrame(() => document.getElementById(location.hash.slice(1))?.focus());
         } catch (error) {
           console.error("Không tải được hồ sơ công ty:", error);
           Toast.error("Không tải được hồ sơ công ty: " + error.message);

@@ -95,6 +95,17 @@
   font-size: 0.8rem !important;
 }
 
+.job-form-section {
+  padding: 8px 0 22px;
+  margin-bottom: 18px;
+  border-bottom: 1px solid var(--border-light);
+}
+.job-form-section h2 {
+  margin: 0 0 18px;
+  font-size: 1.08rem;
+  color: var(--text);
+}
+
 /* Company Profile */
 .company-logo-preview {
   width: 100px;

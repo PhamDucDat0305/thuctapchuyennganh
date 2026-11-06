@@ -136,3 +136,65 @@
 .mt-2 {
   margin-top: 16px !important;
 }
+
+.apply-company-summary {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 20px;
+  margin-bottom: 22px;
+  border: 1px solid var(--border-light);
+  border-radius: 14px;
+  background: var(--bg);
+}
+.apply-company-logo {
+  width: 68px;
+  height: 68px;
+  flex: 0 0 68px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 12px;
+  background: var(--primary-light);
+  color: var(--primary);
+  font-size: 1.8rem;
+}
+.apply-company-logo img { width: 100%; height: 100%; object-fit: cover; }
+.apply-company-info { min-width: 0; flex: 1; }
+.apply-company-info h2 { margin: 0 0 6px; font-size: 1.15rem; }
+.apply-company-info p { margin: 3px 0; color: var(--text-light); }
+.apply-company-info .apply-company-description { margin-top: 10px; white-space: pre-line; color: var(--text); }
+.apply-deadline {
+  min-width: 190px;
+  padding: 12px 16px;
+  border-radius: 10px;
+  background: #fff7ed;
+  color: #9a3412;
+}
+.apply-deadline span, .apply-overview-grid span {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--text-light);
+  font-size: 0.82rem;
+}
+.apply-deadline strong { display: block; }
+.apply-job-heading { margin: 4px 0 24px; }
+.apply-job-heading h1 { margin: 10px 0 0; font-size: 1.65rem; }
+.apply-job-section {
+  padding: 20px 0;
+  border-bottom: 1px solid var(--border-light);
+}
+.apply-job-section h2 { margin: 0 0 14px; font-size: 1.12rem; }
+.apply-job-section > p { margin: 0; line-height: 1.75; }
+.apply-preserve-lines { white-space: pre-line; }
+.apply-overview-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.apply-overview-grid > div { padding: 12px 14px; border-radius: 10px; background: var(--bg); }
+.apply-overview-grid strong { display: block; }
+.apply-form-section { border-bottom: 0; }
+
+@media (max-width: 680px) {
+  .apply-company-summary { align-items: flex-start; flex-wrap: wrap; }
+  .apply-deadline { width: 100%; }
+  .apply-overview-grid { grid-template-columns: 1fr; }
+  .apply-job-heading h1 { font-size: 1.35rem; }
+}

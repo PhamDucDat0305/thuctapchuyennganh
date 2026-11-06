@@ -81,6 +81,7 @@
     <link rel="stylesheet" href="../css/navbar.css" />
     <link rel="stylesheet" href="../css/pages/dashboard.css" />
     <link rel="stylesheet" href="../css/pages/employer.css" />
+    <link rel="stylesheet" href="../css/pages/applicants.css" />
     <link
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css"
@@ -167,11 +168,11 @@
                 ${skills.length ? skills.map((s) => `<span class="badge badge-neutral">${s}</span>`).join("") : '<span style="color:var(--text-lighter); font-style: italic;">Chưa cập nhật kỹ năng</span>'}
               </div>
             </div>
-            <div class="flex-between" style="width:100%; margin-top:auto; border-top:1px solid var(--border-light); padding-top:16px">
-              <button class="btn btn-sm btn-outline" onclick="Toast.success('Đã lưu ứng viên')"><i class="fa-solid fa-heart"></i> Lưu</button>
-              <a class="btn btn-sm btn-outline" href="candidate-profile.html?id=${encodeURIComponent(c.id)}">Xem hồ sơ</a>
-              <button class="btn btn-sm btn-outline" onclick="sendInviteToCandidate('${c.id}')"><i class="fa-solid fa-handshake"></i> Mời kết nối</button>
-              <button class="btn btn-sm btn-primary" onclick="window.App.openChat('${c.id}')">Liên hệ</button>
+            <div class="applicant-card-actions">
+              <button class="btn btn-sm btn-outline applicant-action" onclick="Toast.success('Đã lưu ứng viên')"><i class="fa-solid fa-heart"></i> Lưu</button>
+              <a class="btn btn-sm btn-outline applicant-action" href="candidate-profile.html?id=${encodeURIComponent(c.id)}"><i class="fa-regular fa-id-card"></i> Xem hồ sơ</a>
+              <button class="btn btn-sm btn-outline applicant-action" onclick="sendInviteToCandidate('${c.id}')"><i class="fa-solid fa-handshake"></i> Mời kết nối</button>
+              <button class="btn btn-sm btn-primary applicant-action" onclick="window.App.openChat('${c.id}')"><i class="fa-regular fa-comment-dots"></i> Liên hệ</button>
             </div>
           </div>
         `;

@@ -8,13 +8,13 @@
     <link rel="stylesheet" href="css/navbar.css" />
     <link rel="stylesheet" href="css/pages/dashboard.css" />
     <link rel="stylesheet" href="css/pages/job.css" />
+    <link rel="stylesheet" href="css/pages/company-profile.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" />
   </head>
-  <body>
+  <body class="company-profile-page">
     <div id="navbar-placeholder"></div>
-    <main class="container" style="max-width:1100px;padding-top:40px;padding-bottom:64px">
-      <div id="companyProfile" class="card">Đang tải hồ sơ công ty...</div>
-      <section style="margin-top:32px"><h2>Tin tuyển dụng đang mở</h2><div id="companyJobs" class="grid grid-2" style="margin-top:16px"></div></section>
+    <main class="company-profile-main">
+      <div id="companyProfile" class="company-profile-stack">Đang tải hồ sơ công ty...</div>
     </main>
     <script type="module" src="js/db.js"></script>
     <script type="module" src="js/auth.js"></script>
@@ -26,30 +26,58 @@
       })[char]);
       document.addEventListener("DOMContentLoaded", async () => {
         const profile = document.getElementById("companyProfile");
-        const jobsContainer = document.getElementById("companyJobs");
         const id = new URLSearchParams(location.search).get("id");
         try {
           const [company, jobs] = await Promise.all([window.DB.getCompanyById(id), window.DB.getJobs()]);
           if (!company) throw new Error("Không tìm thấy công ty.");
           document.title = `${company.name} — JobViệt`;
+          const currentUser = window.Auth.getCurrentUser();
+          const isOwner = currentUser && String(currentUser.id) === String(company.employerId);
+          const logo = company.logoUrl || company.logo;
+          const logoMarkup = typeof logo === "string" && (/^https?:\/\//i.test(logo) || /^\/employer\/uploads\/companies\//.test(logo))
+            ? `<img src="${escapeHtml(logo)}" alt="Logo ${escapeHtml(company.name)}">`
+            : escapeHtml((company.name || "C").trim().charAt(0).toUpperCase());
+          const size = /^\d+$/.test(String(company.size || "").trim()) ? `${String(company.size).trim()} nhân viên` : (company.size || "");
+          const websiteUrl = /^https?:\/\//i.test(company.website || "") ? company.website : "";
+          const websiteText = websiteUrl.replace(/^https?:\/\//i, "").replace(/\/$/, "");
+          const formatDate = (value) => {
+            if (!value) return "";
+            const date = new Date(value);
+            return Number.isNaN(date.getTime()) ? "" : `${String(date.getDate()).padStart(2, "0")}/${String(date.getMonth() + 1).padStart(2, "0")}/${date.getFullYear()}`;
+          };
+          const info = (label, value, link = "") => `<div class="company-info-item"><small>${label}</small>${value ? (link ? `<a href="${escapeHtml(link)}" target="_blank" rel="noopener noreferrer">${escapeHtml(value)}</a>` : `<strong>${escapeHtml(value)}</strong>`) : '<strong class="is-empty">Chưa cập nhật</strong>'}</div>`;
+          const companyJobs = jobs.filter((job) => String(job.companyId) === String(company.id)).slice(0, 5);
+          const formatSalary = (job) => job.salaryMin != null && job.salaryMax != null
+            ? `${(Number(job.salaryMin) / 1000000).toLocaleString("vi-VN")} - ${(Number(job.salaryMax) / 1000000).toLocaleString("vi-VN")} triệu VND/tháng`
+            : (job.salary || "Thỏa thuận");
           profile.innerHTML = `
-            <div class="flex" style="gap:20px;align-items:center;flex-wrap:wrap">
-              <div class="company-logo-preview">${company.logo ? `<img src="${escapeHtml(company.logo)}" alt="Logo ${escapeHtml(company.name)}" style="max-width:100%;max-height:100%">` : '<i class="fa-solid fa-building"></i>'}</div>
-              <div><h1>${escapeHtml(company.name)}</h1><p>${escapeHtml(company.industry || "Nhà tuyển dụng")}</p></div>
-            </div>
-            <hr style="margin:24px 0;border:0;border-top:1px solid var(--border)" />
-            <div class="grid" style="gap:12px">
-              <p><i class="fa-solid fa-users"></i> Quy mô: ${escapeHtml(company.size || "Chưa cập nhật")}</p>
-              <p><i class="fa-solid fa-location-dot"></i> Địa điểm: ${escapeHtml(company.location || "Chưa cập nhật")}</p>
-              <p><i class="fa-solid fa-globe"></i> Website: ${company.website ? `<a href="${escapeHtml(company.website)}" target="_blank" rel="noopener noreferrer">${escapeHtml(company.website)}</a>` : "Chưa cập nhật"}</p>
-              <div><strong>Giới thiệu</strong><p style="white-space:pre-line;margin-top:8px">${escapeHtml(company.description || "Chưa có nội dung giới thiệu.")}</p></div>
-            </div>`;
-          const activeJobs = jobs.filter((job) => String(job.companyId) === String(company.id));
-          jobsContainer.innerHTML = activeJobs.length ? activeJobs.map((job) => `
-            <article class="card"><h3>${escapeHtml(job.title)}</h3><p>${escapeHtml(job.location)} · ${escapeHtml(job.salary)}</p><a class="btn btn-sm btn-primary" href="job-detail.html?id=${encodeURIComponent(job.id)}">Xem tin</a></article>`).join("") : '<p class="empty-state">Công ty hiện chưa có tin tuyển dụng đang mở.</p>';
+            <section class="company-card">
+              <div class="company-cover"></div>
+              <div class="company-identity"><div class="company-logo">${logoMarkup}</div><div class="company-identity-copy"><h1>${escapeHtml(company.name)}</h1><span class="company-industry">${escapeHtml(company.industry || "Ngành nghề chưa cập nhật")}</span></div></div>
+              <div class="company-owner-action">${isOwner ? '<a class="company-action-btn" href="employer/edit-company.html"><i class="fa-solid fa-pen-to-square"></i> Chỉnh sửa hồ sơ</a>' : '<button class="company-action-btn is-outline" type="button" disabled title="Chức năng theo dõi công ty chưa được triển khai"><i class="fa-regular fa-bookmark"></i> Theo dõi công ty</button>'}</div>
+              <div class="company-quick-facts">
+                <div class="company-fact"><span class="company-fact-icon"><i class="fa-solid fa-users"></i></span><span><small>Quy mô</small><strong>${escapeHtml(size || "Chưa cập nhật")}</strong></span></div>
+                <div class="company-fact"><span class="company-fact-icon"><i class="fa-solid fa-location-dot"></i></span><span><small>Địa điểm</small><strong>${escapeHtml(company.location || "Chưa cập nhật")}</strong></span></div>
+                <div class="company-fact"><span class="company-fact-icon"><i class="fa-solid fa-globe"></i></span><span><small>Website</small>${websiteUrl ? `<a href="${escapeHtml(websiteUrl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(websiteText)}</a>` : '<strong>Chưa cập nhật</strong>'}</span></div>
+              </div>
+            </section>
+            <section class="company-card company-panel"><h2>Giới thiệu công ty</h2>
+              ${company.description ? `<div id="companyDescription" class="company-description is-collapsed">${escapeHtml(company.description)}</div>${company.description.length > 450 || company.description.split("\n").length > 5 ? '<button class="company-text-toggle" onclick="toggleCompanyDescription()">Xem thêm</button>' : ""}` : `<div class="company-empty-description"><span class="company-empty-icon"><i class="fa-regular fa-file-lines"></i></span><div><p>Công ty chưa có phần giới thiệu.</p>${isOwner ? '<a class="company-edit-inline" href="employer/edit-company.html#description">Thêm giới thiệu</a>' : ""}</div></div>`}
+            </section>
+            <section class="company-card company-panel"><h2>Thông tin chung</h2><div class="company-info-grid">
+              ${info("Ngành nghề", company.industry)}${info("Quy mô", size)}${info("Địa điểm", company.location)}${info("Website", websiteText, websiteUrl)}${info("Ngày tham gia", formatDate(company.createdAt))}
+            </div></section>
+            <section class="company-card company-panel"><h2>Việc làm đang tuyển</h2>
+              ${companyJobs.length ? `<div class="company-jobs">${companyJobs.map((job) => `<article class="company-job-row"><div><h3><a href="job-detail.html?id=${encodeURIComponent(job.id)}">${escapeHtml(job.title)}</a></h3><div class="company-job-meta"><span><i class="fa-solid fa-money-bill-wave"></i>${escapeHtml(formatSalary(job))}</span><span><i class="fa-solid fa-location-dot"></i>${escapeHtml(job.location || "Chưa cập nhật")}</span><span><i class="fa-regular fa-calendar"></i>Hạn: ${escapeHtml(job.expiresAt ? new Date(job.expiresAt).toLocaleDateString("vi-VN") : "Không giới hạn")}</span></div></div></article>`).join("")}</div>${jobs.filter((job) => String(job.companyId) === String(company.id)).length > 5 ? `<div style="margin-top:16px;text-align:right"><a class="company-edit-inline" href="job-list.html?companyId=${encodeURIComponent(company.id)}">Xem tất cả <i class="fa-solid fa-arrow-right"></i></a></div>` : ""}` : '<p class="company-profile-error">Hiện công ty chưa có tin tuyển dụng nào.</p>'}
+            </section>`;
+          window.toggleCompanyDescription = function() {
+            const description = document.getElementById("companyDescription");
+            const button = document.querySelector(".company-text-toggle");
+            description.classList.toggle("is-collapsed");
+            button.textContent = description.classList.contains("is-collapsed") ? "Xem thêm" : "Thu gọn";
+          };
         } catch (error) {
           profile.innerHTML = `<div class="empty-state"><h2>Không xem được hồ sơ công ty</h2><p>${escapeHtml(error.message || "Hồ sơ hiện không khả dụng.")}</p></div>`;
-          jobsContainer.innerHTML = "";
         }
       });
     </script>

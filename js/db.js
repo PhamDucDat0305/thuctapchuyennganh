@@ -463,6 +463,15 @@ window.DB = {
     }
   },
 
+  async uploadCompanyLogo(file) {
+    const result = await apiRequest('/employer/company/logo', {
+      method: 'POST',
+      body: file,
+      headers: { 'Content-Type': file.type },
+    });
+    return result.logo;
+  },
+
   async changePassword(currentPassword, newPassword) {
     return await apiRequest("/me/password", {
       method: "POST",
