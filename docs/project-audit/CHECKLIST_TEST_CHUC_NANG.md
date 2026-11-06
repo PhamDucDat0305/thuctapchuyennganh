@@ -1,11 +1,14 @@
 # Checklist kiểm thử chức năng JobViệt
 
-Tài liệu này là kế hoạch kiểm thử thủ công theo source hiện tại. Các ô đều để trống vì chưa chạy lại ứng dụng/SQL Server sau đợt sửa gần nhất. Chỉ thử trên database phát triển với tài khoản và dữ liệu giả.
+Đây là kế hoạch kiểm thử thủ công theo source hiện tại. Các ô kết quả được để trống để ghi nhận khi chạy thử. Chỉ thử trên database phát triển với tài khoản và dữ liệu giả.
 
 ## 1. Chuẩn bị môi trường
 
 - [ ] Backup database phát triển hoặc dùng database test có thể khôi phục.
 - [ ] Xác nhận các bảng lõi `dbo.users`, `dbo.companies`, `dbo.jobs` và các bảng migration cần thiết đã tồn tại, đúng schema API.
+- [ ] Xác nhận `dbo.email_verifications` tồn tại với schema mà `auth-email.routes.js` dùng; repo hiện chưa có migration tạo bảng này.
+- [ ] Điền `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS` và `OTP_SECRET` trong `.env` của backend.
+- [ ] `npm run test:mail` có thể kiểm tra kết nối SMTP; lệnh này không gửi email thử.
 - [ ] Chạy backend trong `backend/` bằng `npm run dev`; ghi lại log startup.
 - [ ] Xác nhận log có `[db] Đã kết nối SQL Server` và `[session] Đã kết nối SQL Server session store`.
 - [ ] Mở frontend qua web server tĩnh, ví dụ Live Server tại `http://localhost:5500`; không mở HTML bằng `file://`.
@@ -19,10 +22,13 @@ Tài liệu này là kế hoạch kiểm thử thủ công theo source hiện t�
 | ID | Thao tác | Kết quả mong đợi | Kết quả |
 |---|---|---|---|
 | AUTH-01 | Mở trang chủ, trang danh sách việc và trang giới thiệu khi chưa đăng nhập. | Trang công khai tải được; việc đóng/hết hạn không xuất hiện trong danh sách công khai. | ☐ Đạt ☐ Lỗi |
-| AUTH-02 | Đăng ký candidate với thông tin hợp lệ. | Tạo user role `candidate`, hồ sơ candidate và đăng nhập ngay; mật khẩu không lưu dạng nguyên văn. | ☐ Đạt ☐ Lỗi |
-| AUTH-03 | Đăng ký employer, nhập tên công ty. | Tạo user `employer` và company có đúng tên vừa nhập; không tự ghép tên công ty từ họ tên. | ☐ Đạt ☐ Lỗi |
-| AUTH-04 | Bỏ trống tên công ty khi chọn employer; thử email sai, mật khẩu dưới 8 ký tự hoặc role không hợp lệ. | Form/API từ chối và hiển thị lỗi; không tạo record dở dang. | ☐ Đạt ☐ Lỗi |
-| AUTH-05 | Đăng ký lại cùng email. | API trả lỗi trùng email (409); không tạo user thứ hai. | ☐ Đạt ☐ Lỗi |
+| AUTH-02 | Candidate yêu cầu OTP, nhận email, xác minh mã rồi hoàn tất đăng ký. | Tạo user role `candidate`, candidate profile và session; password không lưu dạng nguyên văn. | ☐ Đạt ☐ Lỗi |
+| AUTH-03 | Employer xác minh email, đăng ký với tên công ty. | Tạo user `employer` và company có đúng tên gửi; không tự ghép tên công ty từ họ tên. | ☐ Đạt ☐ Lỗi |
+| AUTH-04 | Bỏ trống tên công ty; thử email sai, thiếu verification token, mật khẩu dưới 8 ký tự hoặc role không hợp lệ. | API từ chối và không tạo user/company dở dang. | ☐ Đạt ☐ Lỗi |
+| AUTH-05 | Đăng ký lại cùng email đã có tài khoản. | API trả lỗi trùng email (409); không tạo user thứ hai và response gửi mã không tiết lộ email đã đăng ký. | ☐ Đạt ☐ Lỗi |
+| AUTH-10 | Nhập OTP sai 5 lần, nhập mã hết hạn hoặc yêu cầu gửi mã lại trước/sau 60 giây. | Mã sai/hết hạn bị từ chối; resend sớm trả 429; mã mới vô hiệu mã cũ. | ☐ Đạt ☐ Lỗi |
+| AUTH-11 | Xác minh OTP, chờ token hết hạn hoặc dùng token lần hai. | Token chỉ dùng một lần, hết hạn sau 10 phút; register không tạo thêm account. | ☐ Đạt ☐ Lỗi |
+| AUTH-12 | Cấu hình SMTP sai trên môi trường test và yêu cầu gửi mã. | UI/API hiện lỗi phù hợp; challenge vừa ghi không còn OTP hợp lệ. | ☐ Đạt ☐ Lỗi |
 | AUTH-06 | Đăng nhập sai mật khẩu và email không tồn tại. | Cùng trả thông báo credentials không đúng; không tạo session. | ☐ Đạt ☐ Lỗi |
 | AUTH-07 | Đăng nhập đúng, tải lại trang, mở `/api/me`, rồi đăng xuất. | Session còn hiệu lực sau tải lại; `/api/me` trả user; sau logout `/api/me` trả 401. | ☐ Đạt ☐ Lỗi |
 | AUTH-08 | Thử mở trang employer bằng candidate và ngược lại. | Bị chuyển hướng/chặn theo role; API vẫn từ chối truy cập trái quyền. | ☐ Đạt ☐ Lỗi |
@@ -91,10 +97,9 @@ Tài liệu này là kế hoạch kiểm thử thủ công theo source hiện t�
 | MSG-05 | Gửi quá 30 tin trong một phút bằng cùng tài khoản (chỉ môi trường cô lập). | API trả 429 sau quota. | ☐ Đạt ☐ Lỗi |
 | MSG-06 | Gửi nội dung HTML/script vô hại, mở trên hai role. | Nội dung hiển thị như text, không thực thi markup. | ☐ Đạt ☐ Lỗi |
 
-## 8. Kiểm tra thay đổi gần nhất
+## 8. Kiểm tra giới hạn và vận hành
 
-- [ ] **Không còn Firebase:** mở DevTools → Network, lọc `firebase`/`googleapis`; không có request Firebase từ ứng dụng. Kiểm tra các key legacy trong localStorage vẫn còn nguyên, không bị tự xóa.
-- [ ] **Rate limit:** xác nhận response 429 và `Retry-After` trên test riêng. Quota hiện tại: login 10/15 phút/IP; register 5/giờ/IP; message 30/phút/user; application 10/giờ/user; invite 20/giờ/user; job view 60/10 phút/IP.
+- [ ] **Rate limit:** xác nhận response 429 và `Retry-After` trên test riêng. Quota hiện tại: login 10/15 phút/IP; OTP gửi 10/giờ/IP; xác minh OTP 20/15 phút/IP; register 5/giờ/IP; message 30/phút/user; application 10/giờ/user; invite 20/giờ/user; job view 60/10 phút/IP.
 - [ ] **Session startup:** restart backend; session store phải kết nối trước khi server listen. Theo dõi xem còn log `Connection is closed` khi tải trang/gửi request đồng thời hay không.
 - [ ] **Frontend/API lỗi:** tắt backend tạm thời trên môi trường dev, xác nhận UI hiện thông báo hữu ích; bật lại và xác nhận ứng dụng phục hồi sau reload.
 - [ ] **CORS/session cookie:** thử frontend ở origin được allowlist; login/session hoạt động với cookie. Origin lạ không được phép dùng credentialed API.

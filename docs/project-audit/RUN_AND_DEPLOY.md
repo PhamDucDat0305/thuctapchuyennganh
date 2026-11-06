@@ -35,16 +35,23 @@ DB_USER=<SQL login>
 DB_PASSWORD=<SQL password>
 DB_ENCRYPT=false
 DB_TRUST_CERT=true
+SMTP_HOST=<SMTP host>
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=<SMTP username>
+SMTP_PASS=<SMTP password or app password>
+OTP_SECRET=<random secret with at least 32 bytes>
 ```
 
-Named instance dùng `DB_INSTANCE`; code khi đó không đặt `DB_PORT`. Các placeholder trên không phải credentials thật. Không commit `.env`.
+Named instance dùng `DB_INSTANCE`; code khi đó không đặt `DB_PORT`. `SMTP_SECURE=true` thường dùng implicit TLS trên port 465; `false` thường dùng STARTTLS trên port 587. Tạo `OTP_SECRET` ngẫu nhiên riêng cho môi trường. Các placeholder trên không phải credentials thật. Không commit `.env`.
 
 ## Database
 
 1. Dựng/đối chiếu base tables `dbo.users`, `dbo.companies`, `dbo.jobs` từ schema thực của project/database hiện có. Source hiện không có script tạo ban đầu cho chúng.
 2. Sao lưu database và kiểm tra mỗi migration với schema/dữ liệu staging trước.
-3. Các script là SQL Server/SSMS có `GO`; chạy từng script theo thứ tự 001–011 sau khi xác nhận tiền điều kiện và schema lịch sử. 003 phụ thuộc `applications`; 004/005 phụ thuộc `applications/interviews`; 006 phụ thuộc users/companies; 007–011 phụ thuộc các bảng core và các bảng trước đó.
-4. Không chạy tự động trên production dựa vào hướng dẫn này: migrations không có migration ledger/rollback đầy đủ và có nhánh chỉ in “bảng đã tồn tại”. Migration 009 chủ động dừng nếu có message dài hơn 2.000 ký tự.
+3. Tạo `dbo.email_verifications` theo các cột mà `auth-email.routes.js` dùng. Repo hiện chưa có migration SQL cho bảng này.
+4. Các script là SQL Server/SSMS có `GO`; chạy từng script theo thứ tự 001–011 sau khi xác nhận tiền điều kiện và schema lịch sử. 003 phụ thuộc `applications`; 004/005 phụ thuộc `applications/interviews`; 006 phụ thuộc users/companies; 007–011 phụ thuộc các bảng core và các bảng trước đó.
+5. Không chạy tự động trên production dựa vào hướng dẫn này: migrations không có migration ledger/rollback đầy đủ và có nhánh chỉ in “bảng đã tồn tại”. Migration 009 chủ động dừng nếu có message dài hơn 2.000 ký tự.
 
 Không chạy migration trong audit; trạng thái thật phải được người vận hành kiểm tra ở SSMS.
 
@@ -63,7 +70,7 @@ Health endpoints theo code: `GET http://localhost:3000/api/health` và `/api/hea
 
 ## Build/test/deploy
 
-- Không có lệnh build hoặc test khai báo; frontend không bundler.
+- Không có lệnh build; frontend không bundler. `npm run test:frontend` kiểm tra việc Express host frontend và các route cơ bản; `npm run test:mail` chỉ xác thực SMTP, không gửi thư.
 - Không tìm thấy Dockerfile, compose, CI/CD, hosting config, reverse proxy hoặc production static-server config.
 - Trước deploy cần HTTPS, secret riêng, CORS origin chặt, cookie/proxy, rate limits/security headers, backup, baseline migrations, test tự động và quy trình rollback.
 - Hướng dẫn deploy cụ thể chưa thể xác nhận vì chưa biết host/domain và không có config triển khai trong repo.

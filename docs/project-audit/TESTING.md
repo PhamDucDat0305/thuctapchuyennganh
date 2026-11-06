@@ -1,57 +1,38 @@
-# Tình trạng kiểm thử
+# Kiểm thử
 
-## Test suite trong repository
+## Scripts hiện có
 
-- Không tìm thấy test file/spec hoặc test framework.
-- `backend/package.json` chỉ khai báo scripts `start` và `dev`; không có `test`, `build`, `lint`.
-- Không thấy frontend test harness, SQL integration test hoặc CI workflow.
+Chạy trong thư mục `backend/`:
 
-## Lệnh thực sự chạy trong audit
-
-| Lệnh/kiểm tra | Kết quả |
+| Lệnh | Phạm vi |
 |---|---|
-| `node --version` | `v24.19.0`. |
-| `npm --version` | `11.17.0`. |
-| `npm run` trong `backend/` | Liệt kê `start` và `dev`; không có build/test. |
-| `npm ls --depth=0` trong `backend/` | PASS; các direct dependencies/dev dependency khai báo được liệt kê. |
-| `node --check` trên `backend/src/**/*.js` | PASS cho 23 file JavaScript. |
-| `node --check` trên `js/*.js` | PASS cho 7 file JavaScript. |
-| `npm run` ở root | Không áp dụng: root không có `package.json` (npm trả ENOENT). |
+| `npm run test:frontend` | Smoke test Express host frontend, static assets, health route, JSON 404 và từ chối đường dẫn/file nội bộ. Không truy vấn SQL nghiệp vụ. |
+| `npm run test:mail` | Kiểm tra `OTP_SECRET`, SMTP config và kết nối bằng `transporter.verify()`. Không gửi thư. |
+| `node --check src/routes/auth-email.routes.js` | Ví dụ kiểm tra cú pháp một file JavaScript; lặp lại với file cần kiểm tra. Lệnh không chạy handler/SQL. |
 
-Các syntax check chỉ kiểm tra cú pháp, không chạy handler, browser hoặc SQL.
+Không có script tổng quát `npm test`, unit-test framework hoặc lệnh build frontend.
 
-## Chưa chạy/chưa xác minh
+## Luồng xác minh email cần kiểm thử thủ công
 
-- Không chạy `npm ci`, server, browser, request API hay `npm test` (không có script test).
-- Không kết nối SQL Server, chạy SQLCMD, đọc schema runtime, xem trigger/index, chạy migration hoặc seed.
-- Không chạy linter, security scanner, coverage, HTML validator, load test hoặc benchmark.
-- Không xác minh CORS/cookie trong trình duyệt.
-- Trước đó người dùng báo thành công một số test tay: đăng ký/`/me`/logout, cập nhật trạng thái ứng tuyển, đặt lịch phỏng vấn, lưu hồ sơ công ty, job view và profile views. Đây là báo cáo trao đổi chứ không phải test log độc lập trong audit này. Với messages, đã có log lỗi schema/session và chưa thấy xác nhận hoạt động sau sửa.
+Chỉ dùng mailbox và database phát triển với dữ liệu giả.
 
-## Test nên bổ sung
+1. Gửi `POST /api/auth/email/send-code` với email mới; nhận phản hồi chung và kiểm tra email OTP thực sự tới mailbox.
+2. Gửi lại ngay; endpoint phải trả 429 với `Retry-After`. Sau cooldown 60 giây, gửi mã mới và xác nhận mã cũ không còn hợp lệ.
+3. Nhập mã sai tối đa 5 lần; các lần thử tiếp theo phải bị từ chối. Mã đúng có hạn 5 phút.
+4. Xác minh mã đúng; API trả `verificationToken` có thời hạn 10 phút. Kiểm tra database lưu hash OTP/token, không phải giá trị gốc.
+5. Đăng ký candidate và employer bằng token; employer cần gửi `companyName`. Xác nhận user/profile hoặc company được tạo và session được mở.
+6. Dùng lại token, token hết hạn, thiếu token hoặc sửa token; đăng ký phải bị từ chối và không tạo user.
+7. Yêu cầu mã cho email đã có tài khoản; phản hồi không tiết lộ tài khoản tồn tại và không gửi OTP mới.
+8. Thử email sai định dạng, mã không đủ 6 chữ số, resend cooldown và rate limit 429.
+9. Cố tình cấu hình SMTP sai trên môi trường test; endpoint không để mã hợp lệ kéo dài sau lỗi gửi.
 
-### Backend unit/integration
+## Kiểm thử nghiệp vụ khác
 
-- Auth: register roles, duplicate race, password hashing, bad login, inactive account, session regenerate/destroy, password change.
-- Authorization/BOLA: candidate chỉ thấy/sửa dữ liệu mình; employer chỉ job/application/company của mình; hidden profile không truy cập ngoài policy; admin provisioning.
-- Jobs: validate body, SQL params, active/expired filters, view counting with trigger and duplicate/bot semantics.
-- Applications: duplicate concurrent apply, owner status update, cannot mutate foreign job, withdraw statuses.
-- Interviews: invalid leap dates/time, owner enforcement, transaction rollback, one interview/application, legacy nullable rows.
-- Messages: recipient policy, cursor pagination, read state, 50-row limit, huge history performance.
-- Invites/profile views/saved jobs: role, duplicate concurrency, UTC boundary, status transitions.
-- Error handling: malformed JSON, SQL schema error safe response, no stack exposure.
+- Auth/session: register, login sai/đúng, session sau reload, idle timeout, logout, đổi mật khẩu.
+- Authorization: truy cập hồ sơ/application/job/company thuộc role hoặc user khác.
+- Jobs/applications: validate dữ liệu, job đóng/hết hạn, ứng tuyển trùng, đổi trạng thái.
+- Interviews/messages: ngày giờ sai, ownership, gửi tin, đọc tin, cursor pagination.
+- Database: tạo mới từ baseline, nâng cấp schema hiện có, chạy migration trên bản sao, kiểm tra khóa/index/default.
+- Frontend: lỗi API, responsive, điều hướng role và thông báo trạng thái form.
 
-### Frontend
-
-- Register/login/session refresh/logout with cookies; CORS both `localhost` and `127.0.0.1`.
-- Form validation and API error persistence.
-- Browser XSS tests against job/profile/message text using harmless encoded payloads.
-- Candidate/employer navigation and role restrictions.
-- Regression screenshots/responsive layouts after data loads/fails.
-
-### Database
-
-- Fresh baseline creation test and upgrade test from actual legacy schema snapshots.
-- Validate FK/unique/check/default/index and migration re-run idempotence on disposable SQL Server.
-- Query plans/IO for job search, application lists, candidate discovery, conversations.
-- Backup/restore and retention test with synthetic messages only.
+Không dùng production data hoặc credentials thật trong test. Không coi kiểm tra SMTP `verify()` là xác nhận email OTP đã được gửi tới người nhận.

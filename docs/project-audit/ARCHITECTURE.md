@@ -59,10 +59,38 @@ Frontend lưu `currentUser` trong localStorage để hiển thị UI và gọi `
 
 - Role middleware kiểm tra role, nhưng ownership phải được kiểm tra thêm trong SQL (`recruiter_id`, `candidate_id`).
 - Các luồng applications, jobs employer, company, invites, interviews thường có ownership predicate.
-- `GET /api/users/:id` có route auth/role nhưng không áp dụng `search_status`; xem ISSUE-001.
+- `GET /api/users/:id` áp dụng trạng thái tìm việc và quyền theo quan hệ; employer không có application chỉ xem được candidate đang bật tìm việc.
 - Endpoint public job/stats không có authenticate.
 
 ## Các luồng nghiệp vụ
+
+### Xác minh email đăng ký
+
+```mermaid
+sequenceDiagram
+  actor User as Candidate/employer
+  participant Page as auth.html / js/auth.js
+  participant API as Express auth routes
+  participant DB as SQL Server
+  participant SMTP as SMTP provider
+  User->>Page: Nhập email và yêu cầu mã
+  Page->>API: POST /api/auth/email/send-code
+  API->>DB: Tạo/cập nhật OTP hash và thời hạn
+  API->>SMTP: Gửi mã OTP qua Nodemailer
+  SMTP-->>User: Email chứa OTP
+  User->>Page: Nhập OTP
+  Page->>API: POST /api/auth/email/verify-code
+  API->>DB: So khớp HMAC, lưu token hash 10 phút
+  API-->>Page: verificationToken tạm thời
+  User->>Page: Hoàn tất form đăng ký
+  Page->>API: POST /api/auth/register + verificationToken
+  API->>DB: Tạo user/profile/company và consume token trong transaction
+  API-->>Page: User summary + session cookie
+```
+
+OTP 6 chữ số được tạo bằng `crypto.randomInt`, HMAC-SHA256 theo email với `OTP_SECRET`, hiệu lực 5 phút; nhập sai tối đa 5 lần. Gửi lại sau 60 giây. Token sau xác minh là ngẫu nhiên, chỉ hash SHA-256 được lưu trong `dbo.email_verifications`, dùng một lần và hết hạn sau 10 phút. Route không gửi mã cho email đã đăng ký nhưng trả phản hồi chung để hạn chế dò email.
+
+SMTP settings: `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`. `npm run test:mail` xác thực kết nối SMTP bằng `transporter.verify()` nhưng không gửi thư. Endpoint cần bảng `dbo.email_verifications`; repo hiện chưa có migration SQL tạo bảng này.
 
 ### Ứng tuyển
 
@@ -102,6 +130,6 @@ Employer mở `employer/candidate-profile.html`; frontend gọi `POST /api/profi
 
 ## Tích hợp và file
 
-- Firebase client imports và migration legacy đã được gỡ khỏi source; frontend hiện đi qua Express API. Network runtime chưa kiểm tra.
-- Không tìm thấy email, file upload/download, object storage, WebSocket/SignalR.
-- Không tìm thấy test/build/deployment pipeline.
+- Frontend gọi Express API bằng JSON và session cookie.
+- Email hiện chỉ được gửi cho OTP đăng ký. Không có file upload/download, object storage hoặc WebSocket/SignalR.
+- Backend có smoke test frontend-host và lệnh kiểm tra cấu hình SMTP; không có build/deployment pipeline trong repo.

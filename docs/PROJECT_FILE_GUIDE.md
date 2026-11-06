@@ -28,6 +28,7 @@ Các package được khai báo trong `backend/package.json`; phiên bản npm c
 | `argon2` | Khai báo trong `backend/package.json`; cài ở `backend/node_modules/argon2`; import tại `backend/src/routes/auth.routes.js` và `backend/src/routes/me.routes.js` | Hai route auth/me | Hash mật khẩu khi đăng ký/đổi mật khẩu và xác minh hash khi đăng nhập/đổi mật khẩu, dùng chế độ Argon2id. |
 | `dotenv` | Dependency; nạp tại `backend/src/server.js` | `server.js` và module cấu hình | Đọc `.env` vào `process.env`; `backend/.env.example` liệt kê tên biến mẫu. `.env` thật không được commit. |
 | `nodemon` | Dev dependency; script `dev` trong `backend/package.json` | Chạy qua `npm run dev` | Tự khởi động lại server khi sửa code lúc phát triển; không phải thành phần phục vụ production. |
+| `nodemailer` | Dependency runtime trong `backend/package.json`; transporter cấu hình tại `backend/src/config/mail.js` | `config/mail.js`, `services/emailService.js`, `src/test-mail.js` | Kết nối SMTP để gửi mã OTP xác minh email; không cung cấp hộp thư hoặc lưu email. |
 | Node built-ins | `node:path`, `node:assert`, `node:fs` | `app.js`, `backend/scripts/test-frontend-host.js` | Thư viện có sẵn trong Node, dùng xử lý đường dẫn/file và assertion trong test; không phải package npm. |
 
 Ví dụ, để tự tìm hai thư viện bạn hỏi trong PowerShell:
@@ -79,7 +80,7 @@ flowchart LR
 | Prefix API | Router | Chức năng chính | Phân quyền/kiểm tra chính |
 |---|---|---|---|
 | `/api/health` | `routes/health.routes.js` | Kiểm tra tiến trình API và SQL Server. | `GET /` không cần session; `GET /db` chạy truy vấn kiểm tra database. |
-| `/api/auth` | `routes/auth.routes.js` | Đăng ký, đăng nhập, đăng xuất; hash và kiểm tra mật khẩu. | Có giới hạn request; các endpoint này là điểm bắt đầu/kết thúc session. |
+| `/api/auth` | `routes/auth.routes.js`, `routes/auth-email.routes.js` | Gửi/xác minh OTP đăng ký, đăng ký, đăng nhập, đăng xuất. | Đăng ký cần token xác minh email còn hạn và chưa sử dụng; login/logout dùng session. |
 | `/api/me` | `routes/me.routes.js` | Đọc/cập nhật user hiện tại, hồ sơ ứng viên, đổi password. | Gọi `authenticate`; danh tính lấy từ session đã kiểm tra trong database. |
 | `/api/jobs` | `routes/jobs.routes.js` | Danh sách và chi tiết tin public; ghi lượt xem tin. | Đọc job public; giới hạn tần suất ghi lượt xem. |
 | `/api/employer/jobs` | `routes/employer-jobs.routes.js` | Nhà tuyển dụng quản lý tin của chính họ. | Router yêu cầu session hợp lệ và role `employer`; kiểm tra quyền sở hữu job. |
@@ -132,7 +133,7 @@ flowchart LR
 
 ### `backend/.env.example`
 
-Mẫu biến runtime: `PORT` cho HTTP, `NODE_ENV` môi trường, `SESSION_SECRET` ký cookie, `FRONTEND_ORIGINS` CORS, `DB_SERVER`/`DB_PORT` hoặc `DB_INSTANCE` để tìm SQL Server, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_ENCRYPT`, `DB_TRUST_CERT` để xác thực/TLS. File này là ví dụ; thông tin thật điền vào `.env` cục bộ và không commit.
+Mẫu biến runtime gồm HTTP/session/CORS, kết nối SQL Server và SMTP. Các biến mail là `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`; `OTP_SECRET` phải có ít nhất 32 byte entropy để HMAC mã OTP. File chỉ chứa placeholder; thông tin thật điền vào `.env` cục bộ và không commit.
 
 ### `backend/package-lock.json`
 
@@ -140,7 +141,7 @@ Khóa chính xác phiên bản dependency để npm cài đặt lặp lại ổn
 
 ### `backend/package.json`
 
-Manifest npm: tên/entry point (`src/server.js`), scripts `start`, `dev`, `test:frontend`, dependency runtime và devDependency. Các tên package khai báo ở đây là nơi đầu tiên cần kiểm tra khi muốn biết thư viện bên thứ ba nào được sử dụng.
+Manifest npm: entry point `src/server.js`; scripts `start`, `dev`, `test:frontend`, `test:mail`; dependency runtime gồm `nodemailer` cho SMTP. Đây là nơi xem package được khai báo; phiên bản khóa nằm trong `package-lock.json`.
 
 ## backend/scripts
 
@@ -194,7 +195,7 @@ Tạo bảng lời mời nhà tuyển dụng gửi ứng viên và index cần t
 
 Tạo bảng ghi nhận lượt xem hồ sơ giữa nhà tuyển dụng và ứng viên. Đối tượng bảng được nhắc tới: dbo.profile_views, dbo.users.
 
-Các file SQL ở đây là migrations bổ sung, không phải schema khởi tạo toàn bộ ứng dụng. Code route cũng tham chiếu các bảng lõi `dbo.users`, `dbo.jobs`, `dbo.companies`; cần có các bảng đó và đúng cột trước khi API nghiệp vụ chạy. `server.js` không tự chạy migrations khi khởi động; việc thay đổi schema được thực hiện riêng trong SQL Server Management Studio theo trạng thái database hiện tại.
+Các file SQL ở đây là migrations bổ sung, không phải schema khởi tạo toàn bộ ứng dụng. Code route cũng tham chiếu `dbo.email_verifications`, nhưng hiện chưa có migration tạo/nâng cấp bảng này trong `backend/sql`; API xác minh email chỉ chạy khi bảng đã được tạo đúng schema. Các bảng lõi `dbo.users`, `dbo.jobs`, `dbo.companies` cũng cần có trước. `server.js` không tự chạy migrations khi khởi động; việc thay đổi schema được thực hiện riêng trong SQL Server Management Studio.
 
 ## backend/src
 
@@ -206,6 +207,10 @@ Composition root của Express: import tất cả router/middleware; tạo `app`
 
 Entry point được `npm start`/`npm run dev` gọi. Nạp `.env` qua `dotenv`, gọi `connectDatabase()` trước, gọi `app.locals.connectSessionStore()` tiếp theo, chỉ `app.listen()` khi cả hai thành công. Với SIGINT/SIGTERM, nó dừng nhận request rồi gọi các hàm đóng session store và pool. Nếu SQL không sẵn sàng, server không mở cổng.
 
+### `backend/src/test-mail.js`
+
+Script `npm run test:mail` nạp `.env`, kiểm tra `OTP_SECRET`, tạo Nodemailer transporter và gọi `transporter.verify()` để kiểm tra khả năng xác thực/kết nối SMTP. Script không gửi email thử.
+
 ## backend/src/config
 
 ### `backend/src/config/database.js`
@@ -215,6 +220,10 @@ Module cấu hình và chia sẻ SQL Server client. Import `mssql`; `requireEnv(
 ### `backend/src/config/session.js`
 
 Adapter phiên đăng nhập. Import `express-session`, `connect-mssql-v2` và `buildConfig()` từ database config. `createSessionMiddleware()` kiểm tra `SESSION_SECRET`, tạo MSSQLStore trỏ tới `[dbo].[sessions]` với TTL 7 ngày, đặt cookie HttpOnly/SameSite và bật Secure khi production. `connectSessionStore()` khởi tạo/kết nối store; `closeSessionStore()` đóng kết nối store. `app.js` gọi factory để gắn middleware; `server.js` quản lý lifecycle; `auth.routes.js` lấy tên cookie và lưu/hủy session qua helper.
+
+### `backend/src/config/mail.js`
+
+Import `nodemailer`, đọc và kiểm tra `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_SECURE`, rồi tạo transporter SMTP. Module không gửi email; `emailService.js` dùng transporter này. `test-mail.js` gọi `verify()` để kiểm tra cấu hình/kết nối.
 
 ## backend/src/middleware
 
@@ -242,7 +251,15 @@ API ứng tuyển; router dùng `authenticate` + `requireRole`, truy vấn `appl
 
 ### `backend/src/routes/auth.routes.js`
 
-Luồng xác thực chính. Import `argon2`, `mssql` types/pool, rate limiter, session helpers và session cookie name. Đăng ký validate dữ liệu, hash password bằng Argon2id, rồi trong transaction tạo `users` cùng `candidate_profiles` hoặc `companies`; sau commit tạo session. Đăng nhập tìm user bằng parameterized query, kiểm tra hash/trạng thái, rồi regenerate/save session. Có dummy hash để giảm khác biệt thời gian phản hồi khi email không tồn tại. Logout destroy session và xóa cookie. Endpoints: `POST /register`, `POST /login`, `POST /logout`.
+Luồng xác thực chính, đồng thời gắn `auth-email.routes.js` dưới `/email`. Đăng ký yêu cầu `verificationToken`; trong transaction kiểm tra token còn hạn/chưa dùng, tạo user và candidate profile hoặc company, đánh dấu token đã dùng, sau commit tạo session. Password dùng Argon2id. Đăng nhập kiểm tra hash/trạng thái và regenerate/save session; logout hủy session và xóa cookie. Các endpoint của router: `POST /register`, `POST /login`, `POST /logout`; đường dẫn đầy đủ có prefix `/api/auth`.
+
+### `backend/src/routes/auth-email.routes.js`
+
+Hai endpoint public phục vụ bước xác minh trước đăng ký. `POST /send-code` kiểm tra email chưa đăng ký; nếu email đã có tài khoản, endpoint vẫn trả phản hồi chung nhưng không gửi mã. Với email có thể đăng ký, route tạo hoặc thay challenge gần nhất trong `dbo.email_verifications`, rồi gửi OTP qua email. Mã OTP có 6 chữ số, hết hạn sau 5 phút, chờ gửi lại 60 giây, tối đa 5 lần nhập sai; route giới hạn số request theo IP. `POST /verify-code` xác minh OTP trong transaction, tạo token ngẫu nhiên dùng một lần có hạn 10 phút và chỉ lưu SHA-256 hash của token. OTP được lưu dạng HMAC-SHA256, không lưu mã gốc. Bảng được dùng là `dbo.email_verifications`.
+
+### `backend/src/services/emailService.js`
+
+Tạo transporter khi gửi email lần đầu và dùng lại trong process. `sendOTPEmail(to, otp)` gửi email HTML JobViệt qua SMTP, nêu mã và thời hạn 5 phút. Đây là nơi định dạng nội dung email; cấu hình SMTP nằm ở `config/mail.js`.
 
 ### `backend/src/routes/employer-company.routes.js`
 
@@ -302,6 +319,10 @@ Bọc hàm route async thành `(req, res, next) => Promise.resolve(handler(...))
 
 Chuyển callback API của `express-session` thành Promise cho ba thao tác `regenerateSession`, `saveSession`, `destroySession`. `auth.routes.js` dùng regenerate trước khi gắn userId để chống session fixation, save để đảm bảo session được ghi vào MSSQLStore trước response đăng nhập, destroy khi logout hoặc thu hồi phiên.
 
+### `backend/src/utils/otp.js`
+
+Tạo OTP sáu chữ số bằng `crypto.randomInt`, kiểm tra độ dài khóa `OTP_SECRET`, tạo HMAC-SHA256 gắn với email và so sánh hash theo thời gian an toàn. Được `auth-email.routes.js` gọi; không gửi email và không truy vấn database.
+
 ## js
 
 ### `js/api.js`
@@ -314,7 +335,11 @@ Logic giao diện dùng chung, chủ yếu cho dashboard. `renderSidebar()` và 
 
 ### `js/auth.js`
 
-Định nghĩa `window.Auth`, API xác thực mà các trang frontend sử dụng. `register()`/`login()` gọi `apiRequest()`; server tạo cookie session, frontend lưu bản tóm tắt user trong `localStorage` để dựng giao diện. `logout()` gọi API, dọn cache local/session và chuyển trang. `getCurrentUser()`/`isLoggedIn()` đọc cache, `updateSession()` cập nhật cache, `requireAuth(roles)` kiểm tra role phía UI rồi gọi `/me` để xác minh cookie session với backend. Quyền thật phải được kiểm tra lại ở backend, không dựa trên localStorage.
+Định nghĩa `window.Auth`, API xác thực frontend. `sendEmailCode()` và `verifyEmailCode()` gọi hai endpoint email; `register()` gửi `verificationToken` cùng thông tin tài khoản. `login()`/`logout()` gọi API session; frontend lưu bản tóm tắt user trong `localStorage` để dựng giao diện. `requireAuth(roles)` kiểm tra role phía UI rồi gọi `/me`; quyền thật vẫn do backend kiểm tra.
+
+### `auth.html` (phần luồng xác minh email)
+
+Trang đăng nhập/đăng ký hiển thị nút gửi OTP, ô nhập mã và trạng thái xác minh. Các hàm inline `sendRegistrationCode()` và `verifyRegistrationCode()` gọi `window.Auth`; token trả về chỉ được giữ trong state JavaScript của trang để gửi cùng request đăng ký. Không lưu OTP/token trong `localStorage`.
 
 ### `js/db.js`
 
@@ -330,6 +355,15 @@ Script IIFE độc lập để không làm rò biến helper ra global. `getUser
 
 ## Các luồng quan trọng
 
+### Xác minh email khi đăng ký
+
+1. `auth.html` gọi `window.Auth.sendEmailCode(email)` → `POST /api/auth/email/send-code`.
+2. `auth-email.routes.js` tạo challenge trong `dbo.email_verifications`, rồi `emailService.js` gửi OTP qua SMTP. Mã tồn tại 5 phút; resend cooldown 60 giây.
+3. Người dùng nhập OTP; `verifyEmailCode()` gọi `POST /api/auth/email/verify-code`. Khi hợp lệ, API trả token ngẫu nhiên có hạn 10 phút; database chỉ lưu hash token.
+4. `register()` gửi token tới `POST /api/auth/register`. Route xác minh token và tiêu thụ nó trong cùng transaction tạo user/profile/company; đăng ký thất bại thì transaction rollback.
+
+Giới hạn hiện có: 5 lần nhập OTP sai cho mỗi challenge, 10 lần gửi/giờ/IP và 20 lần verify/15 phút/IP. SMTP được cấu hình bằng `SMTP_*`; `OTP_SECRET` phải dài tối thiểu 32 byte. `npm run test:mail` chỉ kiểm tra SMTP, không gửi email thử.
+
 ### Đăng nhập
 
 `js/auth.js` gọi API đăng nhập; `backend/src/routes/auth.routes.js` kiểm tra thông tin và tạo session. Session store trong SQL Server lưu phiên; `authenticate.js` xác nhận session cho request cần đăng nhập.
@@ -340,7 +374,7 @@ Script IIFE độc lập để không làm rò biến helper ra global. `getUser
 
 ### Schema
 
-Các thay đổi cấu trúc database được ghi trong `backend/sql/`. Đây là migration thủ công; trước khi áp dụng cần kiểm tra schema thực tế vì migration có thể phụ thuộc trạng thái bảng/cột hiện hữu.
+Các thay đổi cấu trúc database được ghi trong `backend/sql/`; đây là migration thủ công. `dbo.email_verifications` hiện chưa có migration trong repo, dù route xác minh email cần bảng này với các cột mà `auth-email.routes.js` truy vấn/cập nhật. Trước khi áp dụng schema cần kiểm tra database thực tế.
 
 ## Giới hạn tài liệu
 

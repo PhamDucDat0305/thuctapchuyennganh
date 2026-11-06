@@ -1,58 +1,45 @@
-# Cây thư mục project
+# Cấu trúc project
 
 ```text
 D:\DH52300430\
-├── index.html, job-list.html, job-detail.html, auth.html
-├── about.html, contact.html
-├── candidate/                    # Trang tài khoản ứng viên
-├── employer/                     # Trang tài khoản nhà tuyển dụng
+├── index.html, job-list.html, job-detail.html, auth.html, about.html, contact.html
+├── candidate/                     # Trang ứng viên
+├── employer/                      # Trang nhà tuyển dụng
 ├── css/                           # CSS chung và theo trang
-├── js/                            # API client, auth, data layer, UI
-├── ico/                           # Icon/manifest tĩnh
+├── js/                            # API client, auth, data layer và UI
+├── ico/                           # Icon và web manifest
 ├── backend/
 │   ├── package.json, package-lock.json, .env.example
-│   ├── sql/                       # SQL migrations 001–011
+│   ├── scripts/test-frontend-host.js
+│   ├── sql/                        # 11 migration SQL Server
 │   └── src/
 │       ├── app.js, server.js
-│       ├── config/                # Database pool, session
-│       ├── middleware/            # Auth, roles, errors
-│       ├── routes/                # REST API
-│       └── utils/                 # async/session helpers
-└── docs/project-audit/            # 12 tài liệu audit được tạo
+│       ├── config/                 # database, session, SMTP
+│       ├── middleware/             # auth, role, rate limit, errors
+│       ├── routes/                 # REST API, gồm auth-email.routes.js
+│       ├── services/               # gửi email OTP
+│       └── utils/                  # OTP, session helpers, async handler
+└── docs/
+    ├── PROJECT_FILE_GUIDE.md
+    └── project-audit/              # hướng dẫn, API, kiến trúc, DB và kiểm thử
 ```
 
-## Thành phần quan trọng
+## Các file chính
 
-| Đường dẫn | Vai trò/phụ thuộc | Tầm quan trọng | Sinh tự động? |
-|---|---|---:|---|
-| `index.html`, `job-list.html`, `job-detail.html` | Trang công khai; gọi `js/db.js`/API và render job | Cao | Không |
-| `auth.html` | Đăng nhập/đăng ký qua `window.Auth` | Cao | Không |
-| `candidate/*.html` | Dashboard, hồ sơ, ứng tuyển, việc lưu, message, interview, invite | Cao | Không |
-| `employer/*.html` | Dashboard, quản lý việc, ứng viên, company, message, interview | Cao | Không |
-| `css/styles.css`, `css/navbar.css`, `css/pages/*.css` | Styles toàn site và theo module | Trung bình | Không |
-| `js/api.js` | Fetch JSON tới API trên port 3000; gửi cookie credentials | Cao | Không |
-| `js/auth.js` | Login/register/logout, cache user, kiểm tra `/api/me` | Cao | Không |
-| `js/db.js` | Adapter `window.DB`, gọi Express API | Cao | Không |
-| `js/app.js`, `js/navbar.js`, `js/notifications.js` | Navigation, sidebar, badge, UI/toast/chat | Cao | Không |
-| `backend/src/server.js` | Entry point; connect DB, listen, shutdown | Cao | Không |
-| `backend/src/app.js` | Express middleware, CORS, JSON, session, route mounting | Cao | Không |
-| `backend/src/config/database.js` | Cấu hình và singleton pool SQL Server | Cao | Không |
-| `backend/src/config/session.js` | Session cookie, SQL Server store | Cao | Không |
-| `backend/src/middleware/*` | Xác thực, role, not-found, lỗi | Cao | Không |
-| `backend/src/routes/*` | Nghiệp vụ API và truy vấn SQL | Cao | Không |
-| `backend/src/utils/*` | Promise adapters | Thấp | Không |
-| `backend/sql/001`–`011` | Bảng mở rộng/migration theo bước; phụ thuộc schema lõi không có trong repo | Cao | Không |
-| `backend/.env.example` | Tên biến và placeholder cấu hình | Cao | Không |
-| `backend/.env` | File local hiện diện/được ignore; không đọc giá trị khi audit | Nhạy cảm | Không |
-| `backend/package-lock.json` | Khóa dependency backend | Cao | Tự sinh bởi npm |
-| `backend/node_modules/` | Thư viện cài local, bị bỏ qua khi liệt kê source | Không đưa vào kiểm kê | Sinh tự động |
-| `.gitignore` | Bỏ qua `.env`, `node_modules`, log | Cao | Không |
-| `.vscode/` | Cấu hình editor; không phải cấu hình build | Thấp | Không |
+| Đường dẫn | Chức năng |
+|---|---|
+| `js/api.js` | Gửi request JSON tới Express và kèm session cookie. |
+| `js/auth.js` | Xác minh OTP, đăng ký, đăng nhập, đăng xuất và kiểm tra session phía giao diện. |
+| `js/db.js` | Cung cấp `window.DB`, chuyển các thao tác giao diện thành request API. |
+| `backend/src/server.js` | Nạp cấu hình môi trường, kết nối database/session store và mở HTTP server. |
+| `backend/src/app.js` | Cấu hình Express, static frontend, middleware và API routes. |
+| `backend/src/config/database.js` | Cấu hình SQL Server và pool dùng chung. |
+| `backend/src/config/session.js` | Session cookie và store SQL Server. |
+| `backend/src/config/mail.js` | Cấu hình Nodemailer/SMTP từ biến môi trường. |
+| `backend/src/routes/auth-email.routes.js` | Gửi OTP và phát verification token dùng một lần. |
+| `backend/src/services/emailService.js` | Tạo nội dung và gửi email OTP. |
+| `backend/src/utils/otp.js` | Sinh OTP và kiểm tra HMAC an toàn. |
+| `backend/src/test-mail.js` | Kiểm tra cấu hình và kết nối SMTP; không gửi email. |
+| `backend/sql/001`–`011` | Migrations bổ sung. Không có migration tạo `dbo.email_verifications` hoặc toàn bộ bảng lõi. |
 
-## File SQL
-
-`001_create_sessions.sql`; `002_create_applications.sql`; `003_add_application_cv_text.sql`; `004_create_interviews.sql`; `005_upgrade_interviews_columns.sql`; `006_add_profile_fields.sql`; `007_create_saved_jobs.sql`; `008_create_messages.sql`; `009_limit_message_content.sql`; `010_create_invites.sql`; `011_create_profile_views.sql`.
-
-## Tài liệu hiện có và Git
-
-Trước audit không tìm thấy README/Markdown tài liệu project; `docs/project-audit/` được tạo mới. `git status` cho thấy working tree có nhiều thay đổi chưa commit, gồm 515 file bị xóa, 43 file sửa và 4 mục untracked tại thời điểm kiểm tra. Đây là trạng thái sẵn có; audit không chỉnh sửa hay phục hồi các file đó.
+Xem [PROJECT_FILE_GUIDE.md](../PROJECT_FILE_GUIDE.md) để biết các module gọi nhau ra sao và vai trò từng file backend/JavaScript.

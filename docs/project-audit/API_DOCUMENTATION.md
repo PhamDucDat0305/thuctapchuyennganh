@@ -8,7 +8,9 @@ Base path là `/api`; API chạy port mặc định `3000`. Session cookie đư�
 |---|---|---|---|---|
 | `GET /health` | `health.routes.js` `/` | Không | Không | `{status:"ok"}`. |
 | `GET /health/db` | `health.routes.js` `/db` | Không | `SELECT 1` | `{status:"ok",database:"connected"}` hoặc 503 `{status:"error",database:"unavailable"}`. |
-| `POST /auth/register` | `auth.routes.js` `/register` | Không | `email`, `password` 8–128, `fullName` ≤150, role candidate/employer, phone ≤20; employer cần `companyName` ≤200 | 201 user summary; 400 validate; 409 duplicate email; tạo user/profile-or-company/session trong transaction. |
+| `POST /auth/email/send-code` | `auth.routes.js` → `auth-email.routes.js` `/email/send-code` | Không | `{email}`; email hợp lệ ≤255; resend cooldown 60 giây; rate limit 10/giờ/IP | 202 phản hồi chung; gửi OTP nếu email chưa có tài khoản; 400 email sai; 429 cooldown/rate limit. |
+| `POST /auth/email/verify-code` | `auth-email.routes.js` `/verify-code` | Không | `{email, code}`; mã đúng 6 chữ số; rate limit 20/15 phút/IP | 200 `{ok,verificationToken,expiresInSeconds:600}`; mã hạn 5 phút, tối đa 5 lần nhập sai; 400 mã sai/hết hạn/đã dùng; 429 rate limit. |
+| `POST /auth/register` | `auth.routes.js` `/register` | Không | `email`, `verificationToken`, `password` 8–128, `fullName` ≤150, role candidate/employer, phone ≤20; employer cần `companyName` ≤200 | 201 user summary; 400 validate/token không hợp lệ; 409 duplicate email; tạo user/profile-or-company và consume token trong transaction, sau đó tạo session. |
 | `POST /auth/login` | `/login` | Không | email/password; Argon2 verify | 200 user; 400 input; 401 sai credentials đồng nhất; 403 tài khoản không active. |
 | `POST /auth/logout` | `/logout` | Không bắt buộc | Hủy session nếu có | `{ok:true}`; cookie bị clear. |
 | `GET /me` | `me.routes.js` `/` | Session | Không | `{user}`; 401 nếu không auth/session invalid. |
@@ -32,7 +34,7 @@ Base path là `/api`; API chạy port mặc định `3000`. Session cookie đư�
 | `POST /employer/company` | Employer | Validate fields; create/update tùy tồn tại | 201 company. |
 | `PUT /employer/company` | Employer | Partial company fields whitelist | Company; 400/404. |
 | `GET /users/candidates` | Employer/admin | Candidate active, search_status=1 | Mảng profile; không pagination. |
-| `GET /users/:id` | Candidate/employer/admin | ID; email/phone được CASE che nếu không self hoặc recruiter đã có application | Profile/404. Không kiểm tra search_status trước khi trả profile fields; xem ISSUE-001. |
+| `GET /users/:id` | Candidate/employer/admin | ID; email/phone chỉ trả cho self/admin hoặc employer có application với candidate | Profile/404; employer không có application chỉ xem candidate đang bật tìm việc. |
 
 ## Applications và interview
 

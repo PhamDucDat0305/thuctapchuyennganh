@@ -1,37 +1,30 @@
-# Lộ trình cải thiện
+# Lộ trình phát triển
 
-Ưu tiên dựa trên source/log đã biết. Các mục profile privacy, 2FA UI disable, Firebase removal, rate limiting, employer companyName và CV text label đã được sửa trong code; các mục còn lại chưa hoàn thành hoặc cần xác minh runtime/schema.
+Danh sách dưới đây chỉ gồm công việc còn cần làm hoặc cần quyết định. Email hiện chỉ dùng để xác minh tài khoản đăng ký; thông báo về ứng tuyển, phỏng vấn và trạng thái tuyển dụng chưa được triển khai.
 
-## P0 — Làm trước khi đưa lên môi trường dùng thật
+## P0 — Trước khi mở cho người dùng thật
 
-| Việc | Vấn đề gốc / lợi ích | Modules | Phụ thuộc/rủi ro | Xác minh |
-|---|---|---|---|---|
-| Xoay credentials đã dán trong trao đổi | Có khả năng credential DB/session bị lộ; giảm nguy cơ truy cập trái phép. | `.env` local, SQL login, deployment secrets | Cần cập nhật mọi môi trường, restart sessions có thể mất đăng nhập. | Xác nhận secret mới hoạt động, old SQL login/password vô hiệu; không ghi secret vào log/commit. |
-| **Đã sửa trong code:** quyền xem profile theo privacy | `GET /users/:id` áp dụng self/admin/employer visibility và relationship. | `users.routes.js`, profile UI | Policy hiện cho employer đã ứng tuyển xem profile ẩn; invite chưa được tính là quan hệ. | Còn cần xác minh ma trận candidate/employer/admin trên staging. |
-| **Đã sửa trong code:** gỡ Firebase auto migration | Client không còn upload dữ liệu localStorage lên Firebase hoặc xóa key local. | `js/db.js`; `firebase-config.js` đã xóa | Dữ liệu localStorage cũ được giữ nguyên; migration sang SQL nếu cần phải có thao tác riêng. | Kiểm tra DevTools Network không có request Firebase/CDN liên quan. |
+| Việc | Lý do | Phụ thuộc | Cách xác nhận |
+|---|---|---|---|
+| Tạo DDL có phiên bản cho schema lõi và `dbo.email_verifications` | Repo hiện không dựng được database sạch; OTP route phụ thuộc bảng email verification nhưng không có migration. | Đối chiếu schema đang chạy và các route sử dụng. | Tạo database test từ đầu và nâng cấp bản sao schema cũ; so sánh columns, indexes, keys. |
+| Xác nhận gửi OTP end-to-end | `test:mail` chỉ xác thực SMTP, không gửi thư. | Mailbox test, sender/domain policy. | Gửi mã tới inbox test; kiểm tra inbox/spam, thời hạn, resend cooldown và đường lỗi SMTP. |
+| Quản lý secret theo môi trường | SMTP, SQL Server, session và OTP cần secret riêng theo môi trường. | Cập nhật `.env` và secret store ở môi trường triển khai. | Dùng giá trị ngẫu nhiên đủ mạnh; không ghi secret vào git/log; có quy trình luân chuyển định kỳ. |
+| Kiểm thử quyền sở hữu và quyền riêng tư | API chứa thông tin ứng viên, tin tuyển dụng và application. | Tài khoản candidate/employer giả và database test. | Chạy ma trận role/owner với ID của tài khoản khác; API phải từ chối truy cập trái quyền. |
 
-## P1 — Tính đúng và giảm rủi ro nghiệp vụ
+## P1 — Độ tin cậy và bảo mật
 
-| Việc | Vấn đề gốc / lợi ích | Modules | Phụ thuộc/rủi ro | Xác minh |
-|---|---|---|---|---|
-| **Đã sửa một phần:** tắt UI 2FA giả | UI ghi chưa khả dụng; API từ chối đổi cờ. MFA thật chưa có. | `security.html`, `me.routes.js` | Cần chọn TOTP/email factor, recovery và lockout khi bắt đầu triển khai MFA. | Chỉ xác nhận hoàn tất khi login yêu cầu factor thật. |
-| Định nghĩa baseline SQL Server và migration có phiên bản | Thiếu DDL core, migrations không xác nhận đầy đủ existing schema. | `backend/sql`, runbook | Cần xuất/đối chiếu schema thật; migration có thể tác động dữ liệu hiện hữu. | Tạo DB disposable từ đầu và nâng cấp bản sao legacy; schema assertions pass. |
-| **Đã thêm rate limits cơ bản:** hoàn thiện deployment controls | Giới hạn hiện tại nằm trong process; chưa có Helmet/security headers/CSRF. | `app.js`, middleware rateLimit, reverse proxy/deploy config | Cần domain/origin/reverse proxy thật; nhiều instance cần shared store. | Kiểm tra 429/CORS/CSRF/cookie flags và headers trên staging. |
-| **Đã sửa trong code:** employer khai tên công ty thật | Form đăng ký employer có trường companyName bắt buộc theo role. | `auth.html`, `js/auth.js`, `auth.routes.js` | Cần xác nhận registration lưu đúng `dbo.companies.name`. | Tạo employer test rồi xem record company. |
+| Việc | Lý do | Phụ thuộc | Cách xác nhận |
+|---|---|---|---|
+| Chuẩn hóa migration có version, preflight và assertion | Script hiện có xử lý khác nhau khi bảng/cột đã tồn tại. | Baseline schema và bản sao DB đại diện. | Chạy lặp và upgrade; xác nhận không bỏ sót cột/index hoặc làm mất dữ liệu. |
+| Dùng shared rate-limit store khi chạy nhiều instance | Middleware hiện giữ counter trong RAM từng process. | Hạ tầng nhiều instance; lựa chọn store phù hợp. | Gửi request qua nhiều instance và xác nhận quota dùng chung. |
+| Chốt quy tắc lưu và duyệt email notifications | Chưa có email nghiệp vụ ngoài mã xác minh đăng ký. | Danh sách sự kiện, tùy chọn nhận thư, template và SMTP delivery policy. | Gửi thư test cho từng sự kiện; không gửi dữ liệu nhạy cảm ngoài nhu cầu. |
+| Xây luồng reset password và MFA nếu sản phẩm yêu cầu | Source hiện chưa có reset password hoặc MFA challenge. | Thiết kế token/recovery, rate limits, session revocation. | Kiểm thử hết hạn, dùng một lần, khôi phục và đăng nhập sau thay đổi. |
+| Thêm chiến lược security headers/CSRF và cấu hình production proxy | Cấu hình hiện cần được chốt theo domain và topology triển khai. | Domain, HTTPS termination, reverse proxy. | Kiểm tra cookie flags, CORS, CSRF và headers trên staging. |
 
-## P2 — Khả năng bảo trì và hiệu năng
+## P2 — Quy mô và bảo trì
 
-| Việc | Lợi ích | Modules | Phụ thuộc/rủi ro | Xác minh |
-|---|---|---|---|---|
-| Thêm test integration/role matrix | Bắt hồi quy API/SQL, đặc biệt lỗi schema/ownership đã gặp. | Routes, SQL Server test DB, frontend smoke | Cần disposable DB và fixtures giả. | CI chạy test lặp lại; báo cáo pass/fail rõ; không dùng production data. |
-| Pagination cho list APIs | Giới hạn response/heap khi số users/jobs/apps tăng. | jobs, applications, users, interviews, invites, saved/profile views | Frontend cần hỗ trợ cursor/page; sort ổn định. | Test page boundary, duplicates/missing rows, execution plan. |
-| Tối ưu conversations list và xem actual query plans | Giảm scan/window aggregate trên toàn message history. | `messages.routes.js`, indexes | Chỉ thêm index sau đo trên staging; write cost/storage tradeoff. | Benchmark dataset giả và logical reads/latency trước/sau. |
-| Làm rõ lifecycle session/password | Đổi password có thể cần revoke sessions; kiểm tra log “Connection is closed” từng báo. | session helpers/store/auth | Đảm bảo shutdown drain request; phụ thuộc behavior package thực tế. | Load/restart/expire session test trên staging SQL. |
-| Loại bỏ các message branding/comment legacy không còn đúng | Header trong `js/db.js` nói Firestore dù hầu hết gọi API; giảm nhầm lẫn bảo trì. | `js/db.js` | Kiểm tra consumer trước khi bỏ. | Static search không còn Firebase nếu mục tiêu bỏ hoàn toàn. |
-
-## P3 — Mở rộng có căn cứ
-
-- Xem xét service layer/validation library/OpenAPI khi số route/thành viên tăng; hiện một Express app và parameterized SQL trực tiếp vẫn là kiến trúc đơn giản hợp lý.
-- Thiết kế retention/archive cho message chỉ sau khi có số liệu dung lượng, thời hạn pháp lý/sản phẩm, backup và yêu cầu tra cứu; hiện không có job dọn dữ liệu.
-- Thêm observability (request ID, structured logs, metrics) và CI/deploy pipeline sau khi xác định môi trường host.
-- Không có bằng chứng hiện tại bắt buộc phải chuyển microservices, thêm Redis/MongoDB hoặc thay framework.
+- Thêm cursor pagination cho jobs, applications, candidates, invites, interviews và saved/profile views.
+- Tối ưu danh sách hội thoại sau khi đo execution plan/IO với dữ liệu giả quy mô lớn.
+- Bổ sung integration tests cho auth, OTP, ownership, application lifecycle, interview và message pagination.
+- Thiết kế archive/retention cho tin nhắn khi có yêu cầu lưu trữ, thời hạn và chính sách backup cụ thể.
+- Thêm structured logs/request ID và pipeline CI sau khi xác định môi trường deploy.

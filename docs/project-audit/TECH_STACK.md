@@ -13,6 +13,7 @@
 | `express-session` | Cookie-backed session | `^1.19.0`; cài `1.19.0` | `backend/src/config/session.js`. |
 | `connect-mssql-v2` | Lưu session trong SQL Server | `^6.0.0`; cài `6.0.0` | `backend/src/config/session.js`. |
 | `argon2` | Băm/đối chiếu password | `^0.45.1`; cài `0.45.1` | `backend/src/routes/auth.routes.js`, `me.routes.js`. |
+| `nodemailer` | Gửi email xác minh đăng ký qua SMTP | `^10.3.1` | `backend/src/config/mail.js`, `backend/src/services/emailService.js`. |
 | `dotenv` | Đọc biến môi trường | `^18.0.8`; cài `18.0.8` | `backend/src/server.js`, `.env.example`. |
 | `nodemon` | Restart backend khi phát triển | `^3.1.14`; cài `3.1.14` | Script `dev` trong `backend/package.json`. |
 | Font Awesome, Google Fonts | Icon/font qua CDN | Font Awesome URL `6.4.2`; Google Fonts Inter | HTML/CSS liên quan. |
@@ -21,12 +22,12 @@ Phiên bản “cài” là kết quả `npm ls --depth=0` tại lần audit, kh
 
 ## Dependency backend
 
-Dependencies runtime: `argon2`, `connect-mssql-v2`, `dotenv`, `express`, `express-session`, `mssql`. Dev dependency: `nodemon`. Rate limiting hiện dùng middleware in-memory tự viết; chưa có thư viện validation schema, security headers, logger cấu trúc, test framework, ORM hoặc OpenAPI generator.
+Dependencies runtime: `argon2`, `connect-mssql-v2`, `dotenv`, `express`, `express-session`, `mssql`, `nodemailer`. Dev dependency: `nodemon`. Rate limiting hiện dùng middleware in-memory tự viết; chưa có thư viện validation schema, security headers, logger cấu trúc, unit-test framework, ORM hoặc OpenAPI generator.
 
 ## Build/package tools
 
-- Backend scripts: `npm start` → `node src/server.js`; `npm run dev` → `nodemon src/server.js`.
-- Không có script `build`, `test`, `lint` hoặc `format`.
+- Backend scripts: `npm start`; `npm run dev`; `npm run test:frontend` (smoke test host frontend); `npm run test:mail` (kiểm tra kết nối SMTP, không gửi thư).
+- Không có script `build`, tổng hợp `test`, `lint` hoặc `format`.
 - Không có `package.json` ở root; frontend được phục vụ như static files.
 - `backend/package-lock.json` có lockfile version 3. `backend/node_modules/` là thư mục sinh/cài dependency và không được đưa vào tài liệu cấu trúc.
 - Không thấy bundler, TypeScript compiler, CSS preprocessor config hoặc CI workflow.

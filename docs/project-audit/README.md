@@ -1,82 +1,51 @@
-# JobViệt — Tổng quan kiểm toán project
+# JobViệt — tài liệu project
 
-## Mục đích
+JobViệt là website tuyển dụng gồm giao diện ứng viên, nhà tuyển dụng và API dùng SQL Server.
 
-JobViệt là ứng dụng tuyển dụng: ứng viên tìm và ứng tuyển việc làm; nhà tuyển dụng đăng tin, quản lý ứng viên, phỏng vấn và trao đổi tin nhắn. Đây là kết luận dựa trên các trang HTML, lớp dữ liệu frontend và các route API hiện có.
+## Chức năng
 
-## Người dùng và vai trò
+- Khách tìm kiếm, lọc và xem tin tuyển dụng.
+- Ứng viên tạo tài khoản sau khi xác minh email bằng OTP; cập nhật hồ sơ, ứng tuyển, theo dõi trạng thái, lưu tin, xem lịch phỏng vấn, nhắn tin và quản lý lời mời.
+- Nhà tuyển dụng đăng/quản lý tin và công ty, xem hồ sơ/đơn ứng tuyển, cập nhật trạng thái, đặt lịch phỏng vấn, nhắn tin, gửi lời mời và xem thống kê.
+- Phiên đăng nhập được lưu trong SQL Server. Mã đăng ký cần xác minh email qua SMTP; đăng nhập hiện vẫn dùng email và mật khẩu.
 
-| Vai trò | Bằng chứng trong code | Quyền chính |
-|---|---|---|
-| Khách chưa đăng nhập | Trang công khai, `backend/src/routes/jobs.routes.js` | Xem danh sách/chi tiết việc làm, thống kê; gọi ghi lượt xem job. |
-| `candidate` | `requireRole`, các trang `candidate/` | Ứng tuyển, lưu việc, quản lý hồ sơ, phỏng vấn, tin nhắn, lời mời và lượt xem hồ sơ. |
-| `employer` | `requireRole`, các trang `employer/` | Đăng tin, quản lý công ty/đơn ứng tuyển, lên lịch phỏng vấn, nhắn tin, mời ứng viên. |
-| `admin` | Một số route cho phép role `admin` | Một số thao tác ứng tuyển/xem ứng viên; không tìm thấy luồng tạo tài khoản admin hoặc giao diện quản trị hoàn chỉnh trong source đang có. |
+## Công nghệ
 
-## Chức năng chính đã tìm thấy
+- Frontend: HTML, CSS, JavaScript ES modules; API client trong `js/api.js`, lớp dữ liệu trong `js/db.js`, xác thực giao diện trong `js/auth.js`.
+- Backend: Node.js, Express, `mssql`, `express-session`, `connect-mssql-v2`, `argon2`, `nodemailer`.
+- Database: SQL Server, schema `dbo`.
+- Email đăng ký: SMTP qua Nodemailer; OTP được HMAC bằng `OTP_SECRET`.
 
-- Trang giới thiệu, liên hệ, trang chủ, tìm kiếm và xem chi tiết việc làm.
-- Đăng ký/đăng nhập SQL Server, cookie session, đăng xuất và `/api/me`.
-- Hồ sơ ứng viên/công ty; đăng, sửa, đóng tin tuyển dụng.
-- Ứng tuyển, theo dõi/cập nhật trạng thái, lịch phỏng vấn.
-- Việc đã lưu, tin nhắn phân trang theo cuộc trò chuyện, lời mời kết nối, lượt xem hồ sơ.
-- Thống kê tổng quan và lượt xem job.
+## Thư mục
 
-Có code không đồng nghĩa đã được xác minh chạy. Ma trận chi tiết ở [FEATURES.md](FEATURES.md); API ở [API_DOCUMENTATION.md](API_DOCUMENTATION.md).
+- `backend/src/routes/`: API nghiệp vụ, bao gồm `auth-email.routes.js`.
+- `backend/src/config/`: pool SQL, session và SMTP.
+- `backend/src/services/emailService.js`: nội dung và gửi thư OTP.
+- `backend/src/utils/otp.js`: sinh và kiểm tra mã OTP.
+- `backend/sql/`: các migration SQL Server.
+- `docs/PROJECT_FILE_GUIDE.md`: hướng dẫn đọc backend và JavaScript theo chức năng/liên kết module.
 
-## Công nghệ và kiến trúc
+## Chạy local
 
-- Frontend: HTML/CSS/JavaScript ES modules thuần; không có framework hoặc build tool khai báo.
-- Backend: Node.js + Express, CommonJS, `mssql` kết nối SQL Server, `express-session` và `connect-mssql-v2` lưu session, Argon2 băm mật khẩu.
-- Database: SQL Server, schema `dbo`; cấu hình ví dụ đặt `DB_NAME=job_viet`.
-- Frontend gọi Express API bằng `fetch` và session cookie; mã Firebase client và auto migration localStorage đã được gỡ khỏi source.
-- Không tìm thấy dịch vụ gửi email, upload file, WebSocket/SignalR, Redis, ORM, OpenAPI/Swagger hoặc pipeline deploy.
+1. Trong `backend/`, chạy `npm install`.
+2. Sao chép `.env.example` thành `.env`; cấu hình SQL Server, SMTP và `OTP_SECRET` riêng cho môi trường.
+3. Đảm bảo các bảng được API sử dụng đã tồn tại. Các migration trong repo không tạo toàn bộ schema lõi; `dbo.email_verifications` hiện chưa có migration đi kèm.
+4. Chạy `npm run dev` trong `backend/` và phục vụ frontend qua web server tĩnh ở origin có trong `FRONTEND_ORIGINS`.
+5. Dùng `npm run test:mail` để kiểm tra xác thực SMTP. Lệnh này không gửi thư; việc gửi OTP thật cần thử bằng email test.
 
-```mermaid
-flowchart LR
-  Browser[HTML CSS JavaScript]
-  Client[window.DB / Auth / JVApi]
-  API[Express API :3000]
-  Session[SQL Server session store]
-  DB[(SQL Server job_viet)]
-  Browser --> Client -->|HTTP JSON + cookie| API
-  API --> Session
-  API --> DB
-```
+## Tài liệu chi tiết
 
-## Cấu trúc project con
-
-- Frontend nằm ở root, `candidate/`, `employer/`, `css/`, `js/` và `ico/`.
-- Backend độc lập ở `backend/`, có `package.json`, `package-lock.json`, source Express và các SQL migration đánh số `001`–`011`.
-- Không tìm thấy README, test suite, migration runner, base schema SQL cho `users`, `companies`, `jobs`, hoặc package/build config ở root.
-
-## Điều kiện chạy (theo cấu hình)
-
-- Node.js và npm; tại lần audit, runtime là Node `v24.19.0`, npm `11.17.0`.
-- SQL Server với database/schema phù hợp và tài khoản SQL; biến môi trường cần thiết được liệt kê trong `backend/.env.example` (không ghi giá trị bí mật trong tài liệu).
-- Chạy backend từ `backend/`; frontend cần được phục vụ bằng web server tĩnh tại origin nằm trong `FRONTEND_ORIGINS` và cùng hostname với API để cookie hoạt động.
-- Chưa xác minh kết nối database hoặc chạy ứng dụng trong lần audit.
-
-## Tài liệu audit
-
-- [Công nghệ và dependency](TECH_STACK.md)
-- [Cây thư mục](DIRECTORY_STRUCTURE.md)
 - [Danh sách chức năng](FEATURES.md)
 - [Kiến trúc và luồng dữ liệu](ARCHITECTURE.md)
-- [Tài liệu API](API_DOCUMENTATION.md)
-- [Database SQL Server](DATABASE.md)
-- [Lỗi và vấn đề](BUGS_AND_ISSUES.md)
-- [Kiểm tra bảo mật](SECURITY_AUDIT.md)
-- [Chạy và triển khai](RUN_AND_DEPLOY.md)
-- [Tình trạng kiểm thử](TESTING.md)
-- [Checklist kiểm thử chức năng](CHECKLIST_TEST_CHUC_NANG.md)
-- [Lộ trình cải thiện](IMPROVEMENT_ROADMAP.md)
+- [API](API_DOCUMENTATION.md)
+- [Database](DATABASE.md)
+- [Cấu hình và chạy](RUN_AND_DEPLOY.md)
+- [Dependency](TECH_STACK.md)
+- [Bảo mật](SECURITY_AUDIT.md)
+- [Vấn đề còn tồn tại](BUGS_AND_ISSUES.md)
+- [Lộ trình](IMPROVEMENT_ROADMAP.md)
+- [Kiểm thử](TESTING.md) và [checklist thủ công](CHECKLIST_TEST_CHUC_NANG.md)
 
-## Giới hạn và trạng thái xác minh
+## Phạm vi xác minh
 
-- Tài liệu mô tả source code trong working tree tại ngày 2026-10-22; working tree có thay đổi chưa commit trước audit.
-- Chỉ kiểm tra cú pháp JavaScript và dependency backend; không có bài test tự động.
-- Không đọc file `backend/.env`, không kết nối SQL Server, không chạy migration và không đọc dữ liệu runtime.
-- Các bảng `dbo.users`, `dbo.companies`, `dbo.jobs` được API và migrations tham chiếu nhưng không có DDL tạo ban đầu trong project. Schema runtime vì vậy chưa thể đối chiếu đầy đủ.
-- Trước đó người dùng đã báo thành công một số luồng trong trao đổi, nhưng không có log/checklist đầy đủ để coi là kiểm thử độc lập cho toàn ứng dụng.
-- Có 562 mục Git thay đổi nhìn thấy khi audit (515 deletions, 43 modifications, 4 untracked) tại thời điểm audit; không quy nguyên nhân và không thay đổi các mục đó.
+Tài liệu mô tả hành vi trong source. Các truy vấn SQL, migration và luồng giao diện cần được kiểm tra trên database/môi trường chạy thực tế trước khi triển khai. Kết nối SMTP có lệnh kiểm tra riêng, nhưng `transporter.verify()` không xác nhận email OTP đã đến mailbox; cần kiểm thử gửi/nhận thật theo checklist.
