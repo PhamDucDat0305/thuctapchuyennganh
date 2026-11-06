@@ -15,6 +15,7 @@ const savedJobsRoutes = require('./routes/saved-jobs.routes');
 const messagesRoutes = require('./routes/messages.routes');
 const invitesRoutes = require('./routes/invites.routes');
 const profileViewsRoutes = require('./routes/profile-views.routes');
+const companiesRoutes = require('./routes/companies.routes');
 const { notFound, errorHandler } = require('./middleware/errorHandler');
 
 const app = express();
@@ -66,6 +67,7 @@ const frontendPages = {
   '/job-list': 'job-list.html',
   '/job-detail': 'job-detail.html',
   '/job-detail.html': 'job-detail.html',
+  '/company-profile.html': 'company-profile.html',
   '/favicon.ico': 'ico/favicon.ico',
   '/browserconfig.xml': 'ico/browserconfig.xml',
 };
@@ -95,6 +97,7 @@ app.use('/api/saved-jobs', savedJobsRoutes);
 app.use('/api/messages', messagesRoutes);
 app.use('/api/invites', invitesRoutes);
 app.use('/api/profile-views', profileViewsRoutes);
+app.use('/api/companies', companiesRoutes);
 
 // Các nhóm route nghiệp vụ khác (profile...) sẽ được thêm ở đây.
 

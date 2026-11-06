@@ -218,7 +218,7 @@
             ],
           };
           const [label, cls] = statusMap[a.status] || statusMap.pending;
-          recentAppsHTML.push(`<div class="card job-card-dashboard mb-1"><div class="flex-between"><div><strong>${job ? job.title : "N/A"}</strong><br><span class="job-meta-mini">${job ? job.companyName : ""} · ${window.App.timeAgo(a.appliedAt)}</span></div><span class="badge ${cls}">${label}</span></div></div>`);
+          recentAppsHTML.push(`<div class="card job-card-dashboard mb-1"><div class="flex-between"><div><strong>${job ? job.title : "N/A"}</strong><br><span class="job-meta-mini">${job ? window.App.profileLink("company", job.companyId, job.companyName) : ""} · ${window.App.timeAgo(a.appliedAt)}</span></div><span class="badge ${cls}">${label}</span></div></div>`);
         }
         document.getElementById("recentApps").innerHTML = recentAppsHTML.length
           ? recentAppsHTML.join("")
@@ -230,7 +230,7 @@
         for (const s of recentSaved) {
           const job = await window.DB.getJobById(s.jobId);
           if (job) {
-            savedHTML.push(`<div class="card job-card-dashboard mb-1"><div class="flex-between"><div><strong>${job.title}</strong><br><span class="job-meta-mini">${job.companyName} · ${job.salary}</span></div><button onclick="window.App.viewJob('${job.id}')" class="btn btn-sm btn-primary">Xem</button></div></div>`);
+            savedHTML.push(`<div class="card job-card-dashboard mb-1"><div class="flex-between"><div><strong>${job.title}</strong><br><span class="job-meta-mini">${window.App.profileLink("company", job.companyId, job.companyName)} · ${job.salary}</span></div><button onclick="window.App.viewJob('${job.id}')" class="btn btn-sm btn-primary">Xem</button></div></div>`);
           }
         }
         document.getElementById("savedList").innerHTML = savedHTML.length
@@ -246,7 +246,7 @@
             (job) => `
         <div class="job-card animate-fade-up">
           <div class="job-title">${job.title}</div>
-          <div class="job-company">${job.companyName}</div>
+          <div class="job-company">${window.App.profileLink("company", job.companyId, job.companyName)}</div>
           <div class="job-meta"><span><i class="fa-solid fa-location-dot text-danger"></i> ${job.location}</span><span><i class="fa-solid fa-money-bill-wave text-success"></i> ${job.salary}</span></div>
           <div class="job-actions"><button onclick="window.App.viewJob('${job.id}')" class="btn btn-sm btn-primary">Xem chi tiết</button></div>
         </div>

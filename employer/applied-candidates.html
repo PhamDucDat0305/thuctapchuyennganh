@@ -163,7 +163,7 @@
                 <td data-label="Ứng viên">
                   <div class="flex" style="gap:12px">
                     <div class="avatar" style="width:40px;height:40px;border-radius:50%;background:var(--bg);display:flex;align-items:center;justify-content:center;font-weight:bold;color:var(--text);border:1px solid var(--border)">${(a.fullName || 'U')[0]}</div>
-                    <div><strong>${a.fullName || 'Người dùng'}</strong><br><span style="font-size:0.85rem;color:var(--text-light)">${a.email || ''}</span></div>
+                    <div><strong>${window.App.profileLink("candidate", a.candidateId || a.applicantId, a.fullName || 'Người dùng')}</strong><br><span style="font-size:0.85rem;color:var(--text-light)">${a.email || ''}</span></div>
                   </div>
                 </td>
                 <td data-label="Vị trí ứng tuyển"><strong>${job ? job.title : "Đã xóa"}</strong></td>

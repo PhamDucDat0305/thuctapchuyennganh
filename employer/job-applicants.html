@@ -158,7 +158,7 @@
                   <div class="flex" style="gap:16px">
                     <div class="applicant-avatar" style="width:48px; height:48px; border-radius:50%; background:var(--bg-light); display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:1.2rem; border:1px solid var(--border)">${escapeHtml((a.fullName || 'U')[0])}</div>
                     <div>
-                      <strong class="applicant-name" style="font-size:1.1rem">${escapeHtml(a.fullName || 'Người dùng')}</strong><br>
+                      <strong class="applicant-name" style="font-size:1.1rem">${window.App.profileLink("candidate", a.candidateId || a.applicantId, a.fullName || 'Người dùng')}</strong><br>
                       <span class="applicant-meta" style="font-size:0.85rem; color:var(--text-light)">
                         <i class="fa-solid fa-envelope"></i> ${escapeHtml(a.email || '')} ·
                         <i class="fa-solid fa-calendar-days"></i> ${window.App.formatDate(a.appliedAt)}
@@ -260,7 +260,7 @@
         } else {
           document.getElementById('header').innerHTML = `
             <h1><i class="fa-solid fa-users"></i> Ứng viên — ${escapeHtml(job.title)}</h1>
-            <p>${escapeHtml(job.companyName)} · ${escapeHtml(job.location)}</p>`;
+            <p>${window.App.profileLink("company", job.companyId, job.companyName)} · ${escapeHtml(job.location)}</p>`;
           window.render();
         }
       } catch (err) {

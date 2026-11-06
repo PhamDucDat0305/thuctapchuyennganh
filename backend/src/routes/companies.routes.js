@@ -1,0 +1,23 @@
+const express = require('express');
+const { sql, getPool } = require('../config/database');
+const asyncHandler = require('../utils/asyncHandler');
+
+const router = express.Router();
+
+router.get('/:id', asyncHandler(async (req, res) => {
+  if (!/^[1-9]\d*$/.test(req.params.id)) {
+    return res.status(400).json({ error: 'Mã công ty không hợp lệ' });
+  }
+
+  const result = await getPool().request()
+    .input('id', sql.BigInt, req.params.id)
+    .query(`
+      SELECT id, name, logo, industry, [size] AS size,
+        location, website, description
+      FROM dbo.companies
+      WHERE id = @id`);
+  if (!result.recordset.length) return res.status(404).json({ error: 'Không tìm thấy công ty' });
+  return res.json(result.recordset[0]);
+}));
+
+module.exports = router;

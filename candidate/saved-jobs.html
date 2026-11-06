@@ -121,6 +121,8 @@
           
           try {
             const saved = await window.DB.getSavedJobs(user.id);
+            const applications = await window.DB.getApplicationsByCandidate(user.id);
+            const appliedJobIds = new Set(applications.map((application) => String(application.jobId)));
             
             if (!saved.length) {
               container.innerHTML =
@@ -135,14 +137,16 @@
                 jobsHTML.push(`
                   <div class="card animate-fade-up">
                     <h3 class="mb-2" style="font-size:1.1rem">${job.title}</h3>
-                    <p style="color:var(--text-light);font-size:0.9rem;margin-bottom:12px"><i class="fa-solid fa-building"></i> ${job.companyName}</p>
+                    <p style="color:var(--text-light);font-size:0.9rem;margin-bottom:12px"><i class="fa-solid fa-building"></i> ${window.App.profileLink("company", job.companyId, job.companyName)}</p>
                     <div style="font-size:0.85rem; color:var(--text-light); margin-bottom:16px">
                       <div><i class="fa-solid fa-location-dot"></i> ${job.location}</div>
                       <div><i class="fa-solid fa-money-bill-wave"></i> ${job.salary}</div>
                     </div>
                     <div class="flex-between" style="border-top:1px solid var(--border-light); padding-top:12px">
                       <button class="btn btn-sm btn-outline" onclick="window.toggleSave('${job.id}')">Bỏ lưu</button>
-                      <a href="../job-detail.html?id=${job.id}" class="btn btn-sm btn-primary">Ứng tuyển</a>
+                      ${appliedJobIds.has(String(job.id))
+                        ? '<button type="button" class="btn btn-sm btn-outline" disabled aria-label="Bạn đã ứng tuyển công việc này">Đã ứng tuyển</button>'
+                        : `<a href="../job-detail.html?id=${encodeURIComponent(job.id)}" class="btn btn-sm btn-primary">Ứng tuyển</a>`}
                     </div>
                   </div>
                 `);

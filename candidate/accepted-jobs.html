@@ -143,7 +143,7 @@
                 <div class="flex-between mb-2">
                   <div>
                     <h3 style="margin-bottom:4px">${job.title}</h3>
-                    <p style="color:var(--primary); font-weight:600">${job.companyName}</p>
+                    <p style="color:var(--primary); font-weight:600">${window.App.profileLink("company", job.companyId, job.companyName)}</p>
                   </div>
                   <span class="badge badge-success"><i class="fa-solid fa-circle-check"></i> Đã trúng tuyển</span>
                 </div>

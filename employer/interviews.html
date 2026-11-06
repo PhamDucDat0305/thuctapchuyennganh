@@ -167,7 +167,7 @@
               rows.push(`
             <tr>
               <td data-label="Thời gian"><strong>${timeStr}</strong></td>
-              <td data-label="Ứng viên"><strong>${a.fullName}</strong></td>
+              <td data-label="Ứng viên"><strong>${window.App.profileLink("candidate", a.candidateId, a.fullName)}</strong></td>
               <td data-label="Vị trí">${job ? job.title : "N/A"}</td>
               <td data-label="Hình thức"><span class="badge badge-neutral">${interview ? (interview.type === "online" ? "Online" : "Trực tiếp") : "-"}</span></td>
               <td data-label="Hành động">

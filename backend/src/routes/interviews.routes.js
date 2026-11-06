@@ -24,7 +24,7 @@ const interviewSelect = `
     i.interview_type AS type, i.notes,
     i.created_at AS createdAt, i.updated_at AS updatedAt,
     a.candidate_id AS candidateId, j.recruiter_id AS createdBy,
-    j.title AS jobTitle, c.name AS companyName
+    j.title AS jobTitle, c.id AS companyId, c.name AS companyName
   FROM dbo.interviews AS i
   INNER JOIN dbo.applications AS a ON a.id = i.application_id
   INNER JOIN dbo.jobs AS j ON j.id = a.job_id

@@ -130,6 +130,7 @@
               ...interview,
               jobTitle: job ? job.title : "N/A",
               companyName: job ? job.companyName : "N/A",
+              companyId: job ? job.companyId : null,
               createdBy: job ? job.createdBy : null
             });
           }
@@ -160,7 +161,7 @@
             <div class="flex-between flex-wrap" style="gap: 15px;">
               <div>
                 <h3 style="margin-bottom: 5px;">${i.jobTitle}</h3>
-                <div style="color: var(--primary); font-weight: 600; margin-bottom: 10px;">${i.companyName}</div>
+                <div style="color: var(--primary); font-weight: 600; margin-bottom: 10px;">${window.App.profileLink("company", i.companyId, i.companyName)}</div>
                 <div style="display: grid; gap: 8px; font-size: 0.95rem;">
                   <span><i class="fa-solid fa-calendar text-info" style="width: 20px;"></i> <strong>Ngày:</strong> ${window.App.formatDate(i.date)}</span>
                   <span><i class="fa-solid fa-clock text-warning" style="width: 20px;"></i> <strong>Giờ:</strong> ${i.time}</span>

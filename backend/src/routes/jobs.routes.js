@@ -27,6 +27,7 @@ const jobSelect = `
     j.created_at AS createdAt,
     j.recruiter_id AS createdBy,
     j.recruiter_id AS recruiterId,
+    c.id AS companyId,
     c.name AS companyName
   FROM dbo.jobs AS j
   INNER JOIN dbo.companies AS c ON c.id = j.company_id`;

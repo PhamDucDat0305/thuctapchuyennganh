@@ -175,7 +175,7 @@
         for (const a of recentApps) {
           const job = await window.DB.getJobById(a.jobId);
           recentAppsHTML.push(`<div class="dashboard-list-item flex-between">
-            <div><strong class="item-title">${a.fullName}</strong><br><span class="item-subtitle">${job ? job.title : "-"} · ${window.App.timeAgo(a.appliedAt)}</span></div>
+            <div><strong class="item-title">${window.App.profileLink("candidate", a.candidateId || a.applicantId, a.fullName)}</strong><br><span class="item-subtitle">${job ? job.title : "-"} · ${window.App.timeAgo(a.appliedAt)}</span></div>
             <span class="badge badge-warning"><i class="fa-solid fa-hourglass-half"></i></span>
           </div>`);
         }

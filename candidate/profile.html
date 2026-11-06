@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Hồ sơ ứng viên — JobViệt</title>
+    <link rel="stylesheet" href="../css/styles.css" />
+    <link rel="stylesheet" href="../css/navbar.css" />
+    <link rel="stylesheet" href="../css/pages/dashboard.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" />
+  </head>
+  <body>
+    <div id="navbar-placeholder"></div>
+    <main class="container" style="max-width:900px;padding-top:48px;padding-bottom:64px">
+      <div id="candidateProfile" class="card">Đang tải hồ sơ...</div>
+    </main>
+    <script type="module" src="../js/db.js"></script>
+    <script type="module" src="../js/auth.js"></script>
+    <script type="module" src="../js/app.js"></script>
+    <script src="../js/navbar.js"></script>
+    <script type="module">
+      const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+      })[char]);
+      document.addEventListener("DOMContentLoaded", async () => {
+        const target = document.getElementById("candidateProfile");
+        const id = new URLSearchParams(location.search).get("id");
+        try {
+          const candidate = await window.DB.getPublicCandidateProfile(id);
+          if (!candidate) throw new Error("Hồ sơ không tồn tại hoặc ứng viên không bật tìm việc.");
+          document.title = `${candidate.fullName} — JobViệt`;
+          const skills = Array.isArray(candidate.skills) ? candidate.skills : [];
+          target.innerHTML = `
+            <div class="flex" style="gap:20px;align-items:center;flex-wrap:wrap">
+              <div class="avatar" style="width:72px;height:72px;border-radius:50%;display:grid;place-items:center;font-size:1.6rem;font-weight:700;background:var(--primary);color:#fff">${escapeHtml(candidate.fullName?.[0] || "U")}</div>
+              <div><h1>${escapeHtml(candidate.fullName || "Ứng viên")}</h1><p>${escapeHtml(candidate.title || "Chưa cập nhật chức danh")}</p></div>
+            </div>
+            <hr style="margin:24px 0;border:0;border-top:1px solid var(--border)" />
+            <div class="grid" style="gap:12px">
+              <p><i class="fa-solid fa-location-dot"></i> ${escapeHtml(candidate.location || "Chưa cập nhật địa điểm")}</p>
+              <p><i class="fa-solid fa-briefcase"></i> ${escapeHtml(candidate.experience || "Chưa cập nhật kinh nghiệm")}</p>
+              <div><strong>Kỹ năng</strong><div class="flex" style="gap:8px;flex-wrap:wrap;margin-top:8px">${skills.length ? skills.map((skill) => `<span class="badge badge-neutral">${escapeHtml(skill)}</span>`).join("") : "Chưa cập nhật"}</div></div>
+            </div>
+            <p style="margin-top:24px;color:var(--text-light)">Thông tin liên hệ chỉ hiển thị trong các luồng ứng tuyển được nhà tuyển dụng cho phép.</p>`;
+        } catch (error) {
+          target.innerHTML = `<div class="empty-state"><h2>Không xem được hồ sơ</h2><p>${escapeHtml(error.message || "Hồ sơ hiện không khả dụng.")}</p><a class="btn btn-primary" href="../job-list.html">Quay lại tìm việc</a></div>`;
+        }
+      });
+    </script>
+  </body>
+</html>

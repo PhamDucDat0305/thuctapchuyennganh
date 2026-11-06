@@ -124,6 +124,7 @@
 
 /* ---------- Profile Trigger (avatar + name) ---------- */
 .nav-profile-trigger {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 9px;

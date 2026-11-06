@@ -187,7 +187,7 @@
             <div class="conv-item ${isActive ? "active" : ""}" onclick="selectContact('${c.contact?.id}')">
               <div class="conv-avatar">${initials}</div>
               <div class="conv-info">
-                <div class="conv-name">${escapeHtml(c.contact?.fullName || "Người dùng")}</div>
+                <div class="conv-name">${window.App.profileLink("company", c.contact?.companyId, c.contact?.companyName || c.contact?.fullName || "Nhà tuyển dụng")}</div>
                 <div class="conv-last-msg">${escapeHtml(c.lastMessage ? (c.lastMessage.senderId === user.id ? "Bạn: " : "") + c.lastMessage.content : "Bắt đầu trò chuyện")}</div>
               </div>
               ${c.unreadCount > 0 ? `<div class="conv-unread">${c.unreadCount}</div>` : ""}
@@ -226,7 +226,7 @@
         chatMain.innerHTML = `
           <div class="chat-header">
             <div class="conv-avatar" style="width:40px; height:40px">${initials}</div>
-            <div class="conv-name">${escapeHtml(contact.fullName)}</div>
+            <div class="conv-name">${window.App.profileLink("company", contact.companyId, contact.companyName || contact.fullName || "Nhà tuyển dụng")}</div>
           </div>
           <div class="chat-messages" id="msgList">
             ${hasOlderMessages ? '<button type="button" id="loadOlderMessages" onclick="loadOlderMessages()">Tải tin nhắn cũ hơn</button>' : ""}

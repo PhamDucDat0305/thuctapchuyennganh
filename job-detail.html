@@ -194,7 +194,7 @@
         document.getElementById("jobDetail").innerHTML = `
         <div class="job-header animate-fade-up">
           <h1 style="font-size: 2rem; margin-bottom: 12px; color: var(--text);">${escapeHtml(job.title)}</h1>
-          <div style="font-size: 1.2rem; color: var(--primary); font-weight: 600; margin-bottom: 20px;">${escapeHtml(job.companyName)}</div>
+          <div style="font-size: 1.2rem; color: var(--primary); font-weight: 600; margin-bottom: 20px;">${window.App.profileLink("company", job.companyId, job.companyName)}</div>
           <div class="grid grid-3">
             <div class="meta-item"><i class="fa-solid fa-location-dot text-danger"></i> ${escapeHtml(job.location)}</div>
             <div class="meta-item"><i class="fa-solid fa-money-bill-wave text-success"></i> ${escapeHtml(job.salary)}</div>

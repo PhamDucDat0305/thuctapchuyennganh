@@ -20,7 +20,7 @@ const applicationSelect = `
     j.recruiter_id AS recruiterId, u.full_name AS fullName, u.email,
     a.cv_text AS cv, a.status, a.applied_at AS appliedAt,
     a.updated_at AS updatedAt, j.title AS jobTitle,
-    c.name AS companyName, j.location
+    c.id AS companyId, c.name AS companyName, j.location
   FROM dbo.applications AS a
   INNER JOIN dbo.jobs AS j ON j.id = a.job_id
   INNER JOIN dbo.users AS u ON u.id = a.candidate_id

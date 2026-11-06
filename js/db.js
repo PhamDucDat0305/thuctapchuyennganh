@@ -33,6 +33,16 @@ window.DB = {
     }
   },
 
+  async getPublicCandidateProfile(userId) {
+    if (!userId) return null;
+    try {
+      return await apiRequest(`/users/${encodeURIComponent(userId)}/public`);
+    } catch (error) {
+      if (error.status === 404) return null;
+      throw error;
+    }
+  },
+
   /**
    * Update user data
    */
@@ -398,6 +408,16 @@ window.DB = {
       return await apiRequest("/employer/company");
     } catch (error) {
       console.error(`DB: getCompanyByEmployer error for ${employerId}`, error);
+      throw error;
+    }
+  },
+
+  async getCompanyById(companyId) {
+    if (!companyId) return null;
+    try {
+      return await apiRequest(`/companies/${encodeURIComponent(companyId)}`);
+    } catch (error) {
+      if (error.status === 404) return null;
       throw error;
     }
   },

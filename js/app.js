@@ -148,6 +148,7 @@ const BadgeNotifier = {
     if (this._timer) clearInterval(this._timer);
     this._timer = setInterval(async () => {
       const counts = await this.getAllCounts(userId, role);
+      window.dispatchEvent(new CustomEvent("jv:badge-counts", { detail: { userId, counts } }));
       Object.entries(counts).forEach(([key, count]) => {
         this._setBadgeCount(key, count);
       });
@@ -161,6 +162,19 @@ window.BadgeNotifier = BadgeNotifier;
  * Main App Module
  */
 window.App = {
+  profileLink(kind, id, label) {
+    const safeId = String(id ?? "");
+    if (!/^[1-9]\d*$/.test(safeId)) return escapeChatHtml(label || "");
+    const inEmployerArea = location.pathname.includes("/employer/");
+    const inCandidateArea = location.pathname.includes("/candidate/");
+    const href = kind === "company"
+      ? `${inEmployerArea || inCandidateArea ? "../" : ""}company-profile.html?id=${encodeURIComponent(safeId)}`
+      : inEmployerArea
+        ? `candidate-profile.html?id=${encodeURIComponent(safeId)}`
+        : `${inCandidateArea ? "" : "candidate/"}profile.html?id=${encodeURIComponent(safeId)}`;
+    return `<a class="entity-link" href="${href}" onclick="event.stopPropagation()">${escapeChatHtml(label || (kind === "company" ? "Công ty" : "Ứng viên"))}</a>`;
+  },
+
   /* ================= SIDEBAR RENDERING ================= */
   
   /**
@@ -182,6 +196,7 @@ window.App = {
     };
 
     const badgeCounts = await BadgeNotifier.getAllCounts(user.id, role);
+    window.dispatchEvent(new CustomEvent("jv:badge-counts", { detail: { userId: user.id, counts: badgeCounts } }));
     const renderBadge = (key) => {
       const count = badgeCounts[key] || 0;
       const hidden = count > 0 ? "" : ' style="display:none"';
@@ -526,7 +541,7 @@ window.App = {
       <div class="job-card animate-fade-up">
         <div class="job-card-header">
           <div class="job-title">${job.title}</div>
-          <div class="job-company">${job.companyName}</div>
+          <div class="job-company">${this.profileLink("company", job.companyId, job.companyName)}</div>
         </div>
         <div class="job-meta">
           <span><i class="fa-solid fa-location-dot text-danger"></i> ${job.location}</span>

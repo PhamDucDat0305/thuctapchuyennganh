@@ -16,7 +16,7 @@ router.get('/', requireRole('candidate'), asyncHandler(async (req, res) => {
     .input('candidateId', sql.BigInt, req.user.id)
     .query(`
       SELECT pv.id, pv.employer_id AS employerId, pv.candidate_id AS candidateId,
-        pv.viewed_at AS viewedAt, c.name AS companyName, c.industry
+        pv.viewed_at AS viewedAt, c.id AS companyId, c.name AS companyName, c.industry
       FROM dbo.profile_views AS pv
       INNER JOIN dbo.users AS employer ON employer.id = pv.employer_id
       LEFT JOIN dbo.companies AS c ON c.employer_id = pv.employer_id

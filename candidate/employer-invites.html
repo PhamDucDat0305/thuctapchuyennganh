@@ -156,7 +156,7 @@
                  <button class="btn btn-sm btn-light" onclick="respondToInvite(${Number(invite.id)}, 'rejected')">Từ chối</button>`
               : '<button class="btn btn-sm btn-light" disabled>Đã xử lý</button>';
             return `<tr>
-              <td><strong>${escapeHtml(invite.companyName || 'Nhà tuyển dụng')}</strong></td>
+              <td><strong>${window.App.profileLink("company", invite.companyId, invite.companyName || 'Nhà tuyển dụng')}</strong></td>
               <td>${escapeHtml(invite.jobTitle || 'Lời mời kết nối')}</td>
               <td>${escapeHtml(invite.message || '—')}</td>
               <td>${formatDate(invite.createdAt)}</td>

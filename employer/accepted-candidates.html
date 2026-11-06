@@ -153,7 +153,7 @@
               <div class="flex" style="gap: 16px;">
                 <div style="width: 50px; height: 50px; border-radius: 50%; background: linear-gradient(135deg, var(--success), #22c55e); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 1.2rem;">${candidate.fullName ? candidate.fullName[0] : 'U'}</div>
                 <div>
-                  <h3 style="margin-bottom: 4px;">${candidate.fullName || 'Người dùng'}</h3>
+                  <h3 style="margin-bottom: 4px;">${window.App.profileLink("candidate", candidate.candidateId || candidate.applicantId, candidate.fullName || 'Người dùng')}</h3>
                   <p style="color: var(--text-light); font-size: 0.9rem;">${candidate.title || "Ứng viên"}</p>
                 </div>
               </div>

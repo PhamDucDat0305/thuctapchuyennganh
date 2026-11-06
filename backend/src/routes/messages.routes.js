@@ -48,15 +48,18 @@ router.get('/conversations', asyncHandler(async (req, res) => {
         WHERE m.sender_id = @userId OR m.receiver_id = @userId
       )
       SELECT cm.contact_id AS contactId, u.full_name AS fullName, u.role,
+        c.id AS companyId, c.name AS companyName,
         cm.id AS messageId, cm.sender_id AS senderId, cm.receiver_id AS receiverId,
         cm.content, cm.sent_at AS [timestamp], cm.is_read AS [read], cm.unread_count AS unreadCount
       FROM conversation_messages AS cm
       INNER JOIN dbo.users AS u ON u.id = cm.contact_id AND u.status = N'active'
+      LEFT JOIN dbo.companies AS c ON c.employer_id = u.id
       WHERE cm.row_num = 1
       ORDER BY cm.sent_at DESC, cm.id DESC`);
 
   const conversations = result.recordset.map((row) => ({
-    contact: { id: Number(row.contactId), fullName: row.fullName, role: row.role },
+    contact: { id: Number(row.contactId), fullName: row.fullName, role: row.role,
+      companyId: row.companyId == null ? null : Number(row.companyId), companyName: row.companyName || null },
     lastMessage: toMessage({
       id: row.messageId, senderId: row.senderId, receiverId: row.receiverId,
       content: row.content, timestamp: row.timestamp, read: row.read,

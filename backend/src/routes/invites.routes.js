@@ -21,7 +21,7 @@ function validId(value) {
 const inviteSelect = `
   SELECT i.id, i.employer_id AS employerId, i.candidate_id AS candidateId,
     i.job_id AS jobId, i.message, i.status, i.created_at AS createdAt,
-    i.updated_at AS updatedAt, c.name AS companyName, j.title AS jobTitle
+    i.updated_at AS updatedAt, c.id AS companyId, c.name AS companyName, j.title AS jobTitle
   FROM dbo.invites AS i
   LEFT JOIN dbo.companies AS c ON c.employer_id = i.employer_id
   LEFT JOIN dbo.jobs AS j ON j.id = i.job_id`;

@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Hồ sơ công ty — JobViệt</title>
+    <link rel="stylesheet" href="css/styles.css" />
+    <link rel="stylesheet" href="css/navbar.css" />
+    <link rel="stylesheet" href="css/pages/dashboard.css" />
+    <link rel="stylesheet" href="css/pages/job.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" />
+  </head>
+  <body>
+    <div id="navbar-placeholder"></div>
+    <main class="container" style="max-width:1100px;padding-top:40px;padding-bottom:64px">
+      <div id="companyProfile" class="card">Đang tải hồ sơ công ty...</div>
+      <section style="margin-top:32px"><h2>Tin tuyển dụng đang mở</h2><div id="companyJobs" class="grid grid-2" style="margin-top:16px"></div></section>
+    </main>
+    <script type="module" src="js/db.js"></script>
+    <script type="module" src="js/auth.js"></script>
+    <script type="module" src="js/app.js"></script>
+    <script src="js/navbar.js"></script>
+    <script type="module">
+      const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+      })[char]);
+      document.addEventListener("DOMContentLoaded", async () => {
+        const profile = document.getElementById("companyProfile");
+        const jobsContainer = document.getElementById("companyJobs");
+        const id = new URLSearchParams(location.search).get("id");
+        try {
+          const [company, jobs] = await Promise.all([window.DB.getCompanyById(id), window.DB.getJobs()]);
+          if (!company) throw new Error("Không tìm thấy công ty.");
+          document.title = `${company.name} — JobViệt`;
+          profile.innerHTML = `
+            <div class="flex" style="gap:20px;align-items:center;flex-wrap:wrap">
+              <div class="company-logo-preview">${company.logo ? `<img src="${escapeHtml(company.logo)}" alt="Logo ${escapeHtml(company.name)}" style="max-width:100%;max-height:100%">` : '<i class="fa-solid fa-building"></i>'}</div>
+              <div><h1>${escapeHtml(company.name)}</h1><p>${escapeHtml(company.industry || "Nhà tuyển dụng")}</p></div>
+            </div>
+            <hr style="margin:24px 0;border:0;border-top:1px solid var(--border)" />
+            <div class="grid" style="gap:12px">
+              <p><i class="fa-solid fa-users"></i> Quy mô: ${escapeHtml(company.size || "Chưa cập nhật")}</p>
+              <p><i class="fa-solid fa-location-dot"></i> Địa điểm: ${escapeHtml(company.location || "Chưa cập nhật")}</p>
+              <p><i class="fa-solid fa-globe"></i> Website: ${company.website ? `<a href="${escapeHtml(company.website)}" target="_blank" rel="noopener noreferrer">${escapeHtml(company.website)}</a>` : "Chưa cập nhật"}</p>
+              <div><strong>Giới thiệu</strong><p style="white-space:pre-line;margin-top:8px">${escapeHtml(company.description || "Chưa có nội dung giới thiệu.")}</p></div>
+            </div>`;
+          const activeJobs = jobs.filter((job) => String(job.companyId) === String(company.id));
+          jobsContainer.innerHTML = activeJobs.length ? activeJobs.map((job) => `
+            <article class="card"><h3>${escapeHtml(job.title)}</h3><p>${escapeHtml(job.location)} · ${escapeHtml(job.salary)}</p><a class="btn btn-sm btn-primary" href="job-detail.html?id=${encodeURIComponent(job.id)}">Xem tin</a></article>`).join("") : '<p class="empty-state">Công ty hiện chưa có tin tuyển dụng đang mở.</p>';
+        } catch (error) {
+          profile.innerHTML = `<div class="empty-state"><h2>Không xem được hồ sơ công ty</h2><p>${escapeHtml(error.message || "Hồ sơ hiện không khả dụng.")}</p></div>`;
+          jobsContainer.innerHTML = "";
+        }
+      });
+    </script>
+  </body>
+</html>

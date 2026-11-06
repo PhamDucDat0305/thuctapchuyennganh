@@ -130,7 +130,7 @@
           card.innerHTML = `
           <div class="mb-3">
             <h2><i class="fa-solid fa-envelope-open-text"></i> Ứng tuyển</h2>
-            <p class="cv-meta">${escapeHtml(job.title)} — ${escapeHtml(job.companyName)}</p>
+            <p class="cv-meta">${escapeHtml(job.title)} — ${window.App.profileLink("company", job.companyId, job.companyName)}</p>
           </div>
           <form id="applicationForm">
             <div class="form-group">

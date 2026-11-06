@@ -155,7 +155,7 @@
             return;
           }
           list.innerHTML = views.map((view) => `<tr>
-            <td><strong>${escapeHtml(view.companyName || 'Nhà tuyển dụng')}</strong></td>
+            <td><strong>${window.App.profileLink("company", view.companyId, view.companyName || 'Nhà tuyển dụng')}</strong></td>
             <td>${escapeHtml(view.industry || 'Chưa cập nhật')}</td>
             <td>${new Date(view.viewedAt).toLocaleString('vi-VN')}</td>
           </tr>`).join('');

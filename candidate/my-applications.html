@@ -186,7 +186,7 @@
              rows.push(`
               <tr>
                 <td data-label="Công việc"><strong>${job ? job.title : "Tin đã gỡ"}</strong>${extraInfo}</td>
-                <td data-label="Công ty">${job ? job.companyName : "-"}</td>
+                <td data-label="Công ty">${job ? window.App.profileLink("company", job.companyId, job.companyName) : "-"}</td>
                 <td data-label="Ngày nộp">${window.App.formatDate(a.appliedAt)}</td>
                 <td data-label="Trạng thái"><span class="badge ${cls}">${label}</span></td>
                 <td data-label="Hành động">
