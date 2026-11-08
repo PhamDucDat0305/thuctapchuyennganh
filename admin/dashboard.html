@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Quản trị | Job Việt</title>
+  <link rel="stylesheet" href="../css/styles.css"><link rel="stylesheet" href="../css/pages/admin.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+</head>
+<body class="admin-page">
+  <header class="admin-top"><a href="dashboard.html" class="admin-brand">Job Việt <span>Quản trị</span></a><div><span id="adminName"></span><button id="logoutBtn" class="admin-logout">Đăng xuất</button></div></header>
+  <main class="admin-wrap">
+    <nav class="admin-tabs" aria-label="Quản trị">
+      <button class="active" data-section="overview">Tổng quan</button><button data-section="users">Người dùng</button><button data-section="jobs">Tin tuyển dụng</button><button data-section="companies">Công ty</button><button data-section="reports">Phản ánh <span id="newReportBadge" class="admin-badge" hidden></span></button><button data-section="audit">Nhật ký</button>
+    </nav>
+    <section id="overview" class="admin-section"><h1>Tổng quan hệ thống</h1><div id="stats" class="admin-stats"></div></section>
+    <section id="users" class="admin-section" hidden><h1>Quản lý người dùng</h1><div class="admin-tools"><input id="userSearch" placeholder="Tìm email hoặc tên"><select id="userRole"><option value="">Tất cả vai trò</option><option>candidate</option><option>employer</option><option>admin</option></select><button data-reload="users">Tìm kiếm</button></div><div id="userTable"></div></section>
+    <section id="jobs" class="admin-section" hidden><h1>Quản lý tin tuyển dụng</h1><div class="admin-tools"><input id="jobSearch" placeholder="Tìm tên tin hoặc công ty"><button data-reload="jobs">Tìm kiếm</button></div><div id="jobTable"></div></section>
+    <section id="companies" class="admin-section" hidden><h1>Quản lý công ty</h1><div class="admin-tools"><input id="companySearch" placeholder="Tìm công ty, ngành hoặc email"><button data-reload="companies">Tìm kiếm</button></div><div id="companyTable"></div></section>
+    <section id="reports" class="admin-section" hidden><h1>Phản ánh tin tuyển dụng</h1><div class="admin-tools"><select id="reportStatus"><option value="">Tất cả trạng thái</option><option value="new">Mới</option><option value="reviewing">Đang xem xét</option><option value="resolved">Đã xử lý</option><option value="dismissed">Không vi phạm</option></select><button data-reload="reports">Lọc</button></div><div id="reportTable"></div></section>
+    <section id="audit" class="admin-section" hidden><h1>Nhật ký hoạt động Admin</h1><div id="auditTable"></div></section>
+    <p id="adminNotice" class="admin-notice" role="status"></p>
+  </main>
+  <script type="module">
+    import { apiRequest } from "../js/api.js";
+    import "../js/auth.js";
+    const user = window.Auth.requireAuth(["admin"]);
+    if (user) document.getElementById("adminName").textContent = user.fullName || user.email;
+    const $ = (id) => document.getElementById(id);
+    const esc = (s) => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+    const notice = (text) => { $("adminNotice").textContent = text; };
+    const table = (headers, rows) => `<div class="admin-table-wrap"><table><thead><tr>${headers.map(x=>`<th>${x}</th>`).join("")}</tr></thead><tbody>${rows || `<tr><td colspan="${headers.length}">Không có dữ liệu.</td></tr>`}</tbody></table></div>`;
+    const load = async (section) => {
+      notice("Đang tải...");
+      try {
+        if (section === "overview") {
+          const d = await apiRequest("/admin/overview");
+          $("stats").innerHTML = Object.entries({"Ứng viên":d.candidates,"Nhà tuyển dụng":d.employers,"Admin":d.admins,"Tin đang tuyển":d.activeJobs,"Đơn ứng tuyển":d.applications,"Người dùng mới 7 ngày":d.newUsersThisWeek,"Tin đang ẩn":d.hiddenJobs,"Công ty bị khóa":d.suspendedCompanies,"Phản ánh mới":d.newJobReports}).map(([k,v])=>`<article><span>${k}</span><strong>${Number(v).toLocaleString("vi-VN")}</strong></article>`).join("");
+          const badge = $("newReportBadge"); badge.textContent = d.newJobReports > 99 ? "99+" : String(d.newJobReports); badge.hidden = !d.newJobReports;
+        } else if (section === "users") {
+          const p = new URLSearchParams({q:$("userSearch").value,role:$("userRole").value}); const d = await apiRequest(`/admin/users?${p}`);
+          $("userTable").innerHTML = table(["Tài khoản","Vai trò","Trạng thái","Thao tác"],d.items.map(x=>`<tr><td>${esc(x.fullName)}<small>${esc(x.email)}</small></td><td>${esc(x.role)}</td><td>${x.adminLocked?"Đã khóa":"Hoạt động"}</td><td>${x.role === "admin" ? "—" : `<button data-action="user" data-id="${x.id}" data-value="${!x.adminLocked}" class="admin-action">${x.adminLocked?"Mở khóa":"Khóa"}</button>`}</td></tr>`).join(""));
+        } else if (section === "jobs") {
+          const d = await apiRequest(`/admin/jobs?q=${encodeURIComponent($("jobSearch").value)}`);
+          $("jobTable").innerHTML = table(["Tin tuyển dụng","Công ty","Trạng thái tin","Hiển thị","Thao tác"],d.items.map(x=>`<tr><td>${esc(x.title)}<small>#${x.id}</small></td><td>${esc(x.companyName)}</td><td>${esc(x.status)}</td><td>${esc(x.adminVisibility)}</td><td><button data-action="job" data-id="${x.id}" data-value="${x.adminVisibility === "hidden" ? "visible":"hidden"}" class="admin-action">${x.adminVisibility === "hidden"?"Hiện lại":"Ẩn tin"}</button></td></tr>`).join(""));
+        } else if (section === "companies") {
+          const d = await apiRequest(`/admin/companies?q=${encodeURIComponent($("companySearch").value)}`);
+          $("companyTable").innerHTML = table(["Công ty","Ngành / địa điểm","Tài khoản chủ","Trạng thái","Thao tác"],d.items.map(x=>`<tr><td>${esc(x.name)}<small>#${x.id}</small></td><td>${esc(x.industry)} · ${esc(x.location)}</td><td>${esc(x.employerEmail)}</td><td>${esc(x.adminStatus)}</td><td><button data-action="company" data-id="${x.id}" data-value="${x.adminStatus === "suspended" ? "active":"suspended"}" class="admin-action">${x.adminStatus === "suspended"?"Mở khóa":"Khóa công ty"}</button></td></tr>`).join(""));
+        } else if (section === "audit") {
+          const d = await apiRequest("/admin/audit-logs");
+          $("auditTable").innerHTML = table(["Thời gian","Admin","Hành động","Đối tượng","Lý do"],d.items.map(x=>`<tr><td>${new Date(x.createdAt).toLocaleString("vi-VN")}</td><td>${esc(x.adminEmail)}</td><td>${esc(x.action)}</td><td>${esc(x.targetType)} #${esc(x.targetId)}</td><td>${esc(x.reason)}</td></tr>`).join(""));
+        } else {
+          const status = $("reportStatus").value;
+          const d = await apiRequest(`/admin/job-reports${status ? `?status=${encodeURIComponent(status)}` : ""}`);
+          const statusText = {new:"Mới",reviewing:"Đang xem xét",resolved:"Đã xử lý",dismissed:"Không vi phạm"};
+          $("reportTable").innerHTML = table(["Tin được phản ánh","Người gửi","Nội dung","Trạng thái","Cập nhật"],d.map(x=>`<tr><td>${esc(x.jobTitle)}<small>${esc(x.companyName)} · #${x.jobId}</small></td><td>${esc(x.fullName)}<small>${esc(x.phone)} · ${esc(x.email)}</small><small>${esc(x.address)}</small></td><td class="report-content">${esc(x.content)}${x.adminNote?`<small>Ghi chú Admin: ${esc(x.adminNote)}</small>`:""}<small>${new Date(x.createdAt).toLocaleString("vi-VN")}</small></td><td>${statusText[x.status] || esc(x.status)}</td><td><select data-report-status="${x.id}"><option value="reviewing" ${x.status==="reviewing"?"selected":""}>Đang xem xét</option><option value="resolved" ${x.status==="resolved"?"selected":""}>Đã xử lý</option><option value="dismissed" ${x.status==="dismissed"?"selected":""}>Không vi phạm</option></select><button data-report-save="${x.id}" class="admin-action">Lưu</button></td></tr>`).join(""));
+        }
+        notice("");
+      } catch (e) { notice(e.message || "Không tải được dữ liệu"); }
+    };
+    let active = "overview";
+    document.querySelectorAll(".admin-tabs button").forEach(b=>b.addEventListener("click",()=>{active=b.dataset.section;document.querySelectorAll(".admin-tabs button").forEach(x=>x.classList.toggle("active",x===b));document.querySelectorAll(".admin-section").forEach(x=>x.hidden=x.id!==active);load(active);}));
+    document.querySelectorAll("[data-reload]").forEach(b=>b.addEventListener("click",()=>load(b.dataset.reload)));
+    document.addEventListener("click",async e=>{const reportButton=e.target.closest("[data-report-save]");if(reportButton){const id=reportButton.dataset.reportSave;const status=document.querySelector(`[data-report-status="${id}"]`).value;const adminNote=prompt("Ghi chú xử lý (không bắt buộc):") || "";try{await apiRequest(`/admin/job-reports/${id}`,{method:"PATCH",body:JSON.stringify({status,adminNote})});notice("Đã cập nhật trạng thái phản ánh.");await load(active);}catch(err){notice(err.message||"Không cập nhật được phản ánh");}return;}const b=e.target.closest("[data-action]");if(!b)return;const action=b.dataset.action,id=b.dataset.id,value=b.dataset.value;const reason=prompt("Nhập lý do thao tác (bắt buộc):");if(!reason?.trim())return;try{if(action==="user")await apiRequest(`/admin/users/${id}/lock`,{method:"PATCH",body:JSON.stringify({locked:value==="true",reason})});if(action==="job")await apiRequest(`/admin/jobs/${id}/visibility`,{method:"PATCH",body:JSON.stringify({visibility:value,reason})});if(action==="company")await apiRequest(`/admin/companies/${id}/status`,{method:"PATCH",body:JSON.stringify({status:value,reason})});notice("Đã cập nhật.");await load(active);}catch(err){notice(err.message||"Không cập nhật được");}});
+    $("logoutBtn").addEventListener("click",async()=>{await window.Auth.logout();location.href="../auth.html";});
+    load("overview");
+  </script>
+</body></html>

@@ -93,28 +93,19 @@
       <main class="content-area">
         <div class="content-header flex-between">
           <div>
-            <h1>✉️ Cover Letter</h1>
+          <h1><i class="fa-solid fa-envelope-open-text"></i> Cover Letter</h1>
             <p>Tạo và lưu trữ các mẫu thư giới thiệu để gửi kèm CV</p>
           </div>
-          <button
-            class="btn btn-primary"
-            onclick="Toast.info('Đang mở trình tạo Cover Letter')"
-          >
-            + Thêm mới
-          </button>
-        </div>
+          <button class="btn btn-primary" id="newCoverLetter"><i class="fa-solid fa-plus"></i> Thêm mới</button>
+        </form>
 
-        <div class="card animate-fade-up">
-          <h3 class="mb-2">Mẫu IT - Frontend</h3>
-          <p class="cover-letter-preview">
-            Kính gửi Ban Tuyển dụng,<br /><br />Tôi viết thư này để bày tỏ sự
-            quan tâm đến vị trí Frontend Developer...
-          </p>
-          <div class="flex" style="gap: 12px">
-            <button class="btn btn-sm btn-primary">Chỉnh sửa</button>
-            <button class="btn btn-sm btn-danger">Xóa</button>
-          </div>
-        </div>
+        <form class="card" id="coverLetterForm" hidden style="margin-bottom:20px">
+          <h2 id="coverLetterFormTitle">Tạo cover letter</h2>
+          <label class="form-group"><span class="form-label">Tên mẫu</span><input class="form-input" name="title" maxlength="150" required></label>
+          <label class="form-group"><span class="form-label">Nội dung</span><textarea class="form-textarea" name="content" rows="10" maxlength="10000" required></textarea></label>
+          <div class="flex" style="gap:10px"><button class="btn btn-primary" type="submit">Lưu</button><button class="btn btn-light" id="cancelCoverLetter" type="button">Hủy</button></div>
+        </form>
+        <div class="grid grid-2" id="coverLetterList"><div class="empty-state" style="grid-column:1/-1">Đang tải...</div></div>
       </main>
     </div>
     <script type="module" src="../js/db.js"></script>
@@ -126,6 +117,49 @@
       const user = window.Auth.requireAuth(["candidate"]);
       if (!user) throw "redirect";
       window.App.renderSidebar("candidate", "cover_letter");
+      const form = document.getElementById("coverLetterForm");
+      const list = document.getElementById("coverLetterList");
+      let editingId = null;
+      const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]);
+      async function renderLetters() {
+        try {
+          const letters = await window.DB.getCoverLetters();
+          list.innerHTML = letters.length ? letters.map((letter) => `
+            <article class="card animate-fade-up">
+              <h3 class="mb-2">${escapeHtml(letter.title)}</h3>
+              <p class="cover-letter-preview" style="white-space:pre-wrap">${escapeHtml(letter.content)}</p>
+              <small class="text-muted">Cập nhật: ${window.App.formatDate(letter.updatedAt)}</small>
+              <div class="flex" style="gap:10px;margin-top:16px">
+                <button class="btn btn-sm btn-primary" onclick="editCoverLetter('${letter.id}')">Chỉnh sửa</button>
+                <button class="btn btn-sm btn-danger" onclick="deleteCoverLetter('${letter.id}')">Xóa</button>
+              </div>
+            </article>`).join("") : '<div class="empty-state" style="grid-column:1/-1"><div class="empty-icon"><i class="fa-solid fa-envelope-open-text"></i></div><h3>Chưa có cover letter</h3><p>Tạo mẫu thư để dùng lại khi ứng tuyển.</p></div>';
+        } catch (error) { list.innerHTML = `<p class="text-danger">${escapeHtml(error.message || "Không tải được cover letter")}</p>`; }
+      }
+      function openForm(letter = null) {
+        editingId = letter?.id || null;
+        document.getElementById("coverLetterFormTitle").textContent = editingId ? "Chỉnh sửa cover letter" : "Tạo cover letter";
+        form.elements.title.value = letter?.title || "";
+        form.elements.content.value = letter?.content || "";
+        form.hidden = false;
+        form.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+      window.editCoverLetter = async (id) => { try { const letter = (await window.DB.getCoverLetters()).find((item) => String(item.id) === String(id)); if (letter) openForm(letter); } catch (e) { Toast.error(e.message); } };
+      window.deleteCoverLetter = async (id) => { if (!confirm("Xóa cover letter này?")) return; try { await window.DB.deleteCoverLetter(id); Toast.success("Đã xóa cover letter."); renderLetters(); } catch (e) { Toast.error(e.message || "Không xóa được."); } };
+      document.getElementById("newCoverLetter").addEventListener("click", () => openForm());
+      document.getElementById("cancelCoverLetter").addEventListener("click", () => { form.reset(); form.hidden = true; editingId = null; });
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const data = { title: form.elements.title.value, content: form.elements.content.value };
+        const button = form.querySelector('[type="submit"]'); button.disabled = true;
+        try {
+          if (editingId) await window.DB.updateCoverLetter(editingId, data);
+          else await window.DB.createCoverLetter(data);
+          form.reset(); form.hidden = true; editingId = null; Toast.success("Đã lưu cover letter."); await renderLetters();
+        } catch (error) { Toast.error(error.message || "Không lưu được cover letter."); }
+        finally { button.disabled = false; }
+      });
+      renderLetters();
     </script>
   </body>
 </html>

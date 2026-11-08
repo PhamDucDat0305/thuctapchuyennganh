@@ -116,7 +116,7 @@
 
       async function render() {
         const apps = (await window.DB.getApplicationsByCandidate(user.id)).filter(
-          (a) => a.status === "accepted",
+          (a) => ["hired", "accepted"].includes(a.status),
         );
         const container = document.getElementById("acceptedJobs");
 

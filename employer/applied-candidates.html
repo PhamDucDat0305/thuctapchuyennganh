@@ -137,7 +137,7 @@
         async function render(allApps) {
           const list = document.getElementById("appliedList");
           const filteredApps = allApps
-              .filter((a) => a.status === "applied")
+              .filter((a) => ["applied", "reviewing", "interview_invited", "interviewed", "offered", "offer_accepted"].includes(a.status))
               .sort((a, b) => new Date(b.appliedAt) - new Date(a.appliedAt));
 
           if (!filteredApps.length) {
@@ -148,7 +148,11 @@
 
           const statusMap = {
             applied: ['<i class="fa-solid fa-envelope"></i> Mới ứng tuyển', "badge-info"],
-            interview_scheduled: ['<i class="fa-solid fa-calendar-check"></i> Đang phỏng vấn', "badge-warning"],
+            reviewing: ['<i class="fa-solid fa-magnifying-glass"></i> Đang xem xét', "badge-warning"],
+            interview_invited: ['<i class="fa-solid fa-calendar-check"></i> Mời phỏng vấn', "badge-warning"],
+            interviewed: ['<i class="fa-solid fa-user-check"></i> Đã phỏng vấn', "badge-info"],
+            offered: ['<i class="fa-solid fa-file-signature"></i> Đã gửi offer', "badge-info"],
+            offer_accepted: ['<i class="fa-solid fa-circle-check"></i> Đã đồng ý offer', "badge-success"],
             accepted: ['<i class="fa-solid fa-circle-check"></i> Trúng tuyển', "badge-success"],
             rejected: ['<i class="fa-solid fa-circle-xmark"></i> Từ chối', "badge-danger"],
             failed: ['<i class="fa-solid fa-user-xmark"></i> Không đạt', "badge-dark"],
@@ -170,13 +174,25 @@
                 <td data-label="Ngày nộp">${window.App.formatDate(a.appliedAt)}</td>
                 <td data-label="Trạng thái"><span class="badge ${cls}">${label}</span></td>
                 <td data-label="Thao tác">
-                  <a href="job-applicants.html?id=${a.jobId}" class="btn btn-sm btn-light">Xem chi tiết</a>
+                  <button type="button" onclick="window.openApplicantDetails('${a.id}', '${a.jobId}', '${a.status}')" class="btn btn-sm btn-light">Xem chi tiết</button>
                 </td>
               </tr>
             `);
           }
           list.innerHTML = rows.join("");
         }
+
+        window.openApplicantDetails = async function(applicationId, jobId, status) {
+          try {
+            if (status === "applied") {
+              await window.DB.updateApplication(applicationId, { status: "reviewing" });
+            }
+            window.location.href = `job-applicants.html?id=${encodeURIComponent(jobId)}`;
+          } catch (error) {
+            console.error("Không thể cập nhật trạng thái hồ sơ:", error);
+            Toast.error(error.message || "Không thể mở chi tiết hồ sơ.");
+          }
+        };
 
         if (window.DB && window.DB.onApplicationsByRecruiter) {
           const unsubscribe = window.DB.onApplicationsByRecruiter(user.id, (apps) => {

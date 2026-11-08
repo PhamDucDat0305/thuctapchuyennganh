@@ -81,6 +81,7 @@
     <link rel="stylesheet" href="../css/navbar.css" />
     <link rel="stylesheet" href="../css/pages/dashboard.css" />
     <link rel="stylesheet" href="../css/pages/employer.css" />
+    <link rel="stylesheet" href="../css/pages/employer-dashboard.css" />
     <link
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css"
@@ -99,25 +100,44 @@
         >
           <i class="fa-solid fa-bars"></i>
         </button>
-        <div class="content-header">
-          <h1 id="greeting"></h1>
-          <p>Tổng quan hoạt động tuyển dụng</p>
-        </div>
-        <div class="grid grid-4 stagger" id="stats"></div>
-        <div class="grid grid-2 mt-3">
-          <div class="card">
-            <h3 class="mb-2">
-              <i class="fa-solid fa-rectangle-list text-info"></i> Tin tuyển
-              dụng gần đây
-            </h3>
-            <div id="recentJobs"></div>
-            <a href="my-jobs.html" class="btn btn-ghost mt-2">Xem tất cả →</a>
+        <div class="employer-dashboard" id="employerDashboard">
+          <button class="btn btn-icon btn-secondary employer-sidebar-toggle" onclick="App.toggleSidebar()" id="sidebarToggle" aria-label="Mở menu"><i class="fa-solid fa-bars"></i></button>
+          <header class="employer-welcome">
+            <div><span class="employer-eyebrow">BẢNG ĐIỀU KHIỂN NHÀ TUYỂN DỤNG</span><h1 id="greeting">Tổng quan tuyển dụng</h1><p>Theo dõi tin đăng, hồ sơ ứng viên và lịch phỏng vấn của doanh nghiệp.</p></div>
+            <a class="employer-primary-action" href="post-job.html"><i class="fa-solid fa-plus"></i> Đăng tin tuyển dụng</a>
+          </header>
+
+          <nav class="employer-quick-actions" aria-label="Thao tác nhanh">
+            <a href="my-jobs.html"><span><i class="fa-solid fa-rectangle-list"></i></span><span><strong>Quản lý tin</strong><small>Xem và cập nhật tin tuyển dụng</small></span><i class="fa-solid fa-arrow-right employer-action-arrow"></i></a>
+            <a href="applicants.html"><span><i class="fa-solid fa-user-group"></i></span><span><strong>Tìm ứng viên</strong><small>Khám phá hồ sơ phù hợp</small></span><i class="fa-solid fa-arrow-right employer-action-arrow"></i></a>
+            <a href="interviews.html"><span><i class="fa-regular fa-calendar-check"></i></span><span><strong>Lịch phỏng vấn</strong><small>Theo dõi các cuộc hẹn sắp tới</small></span><i class="fa-solid fa-arrow-right employer-action-arrow"></i></a>
+          </nav>
+
+          <section class="employer-stats-grid" id="stats" aria-label="Chỉ số tuyển dụng"></section>
+
+          <div class="employer-dashboard-grid employer-main-grid">
+            <section class="employer-panel">
+              <div class="employer-panel-heading"><div><span class="employer-eyebrow">TIN TUYỂN DỤNG</span><h2>Tin đăng gần đây</h2></div><a href="my-jobs.html">Tất cả tin <i class="fa-solid fa-arrow-right"></i></a></div>
+              <div id="recentJobs" class="employer-job-list"></div>
+            </section>
+            <aside class="employer-side-stack">
+              <section class="employer-panel employer-pipeline-panel">
+                <div class="employer-panel-heading"><div><span class="employer-eyebrow">HỒ SƠ ỨNG VIÊN</span><h2>Tiến độ xử lý</h2></div></div>
+                <div id="applicationPipeline" class="employer-pipeline"></div>
+              </section>
+              <section class="employer-panel employer-company-prompt" id="companyPrompt"></section>
+            </aside>
           </div>
-          <div class="card">
-            <h3 class="mb-2">
-              <i class="fa-solid fa-users text-primary"></i> Ứng viên mới nhất
-            </h3>
-            <div id="recentApps"></div>
+
+          <div class="employer-dashboard-grid employer-bottom-grid">
+            <section class="employer-panel">
+              <div class="employer-panel-heading"><div><span class="employer-eyebrow">HỒ SƠ MỚI</span><h2>Ứng viên mới nhất</h2></div><a href="applied-candidates.html">Xem danh sách <i class="fa-solid fa-arrow-right"></i></a></div>
+              <div id="recentApps" class="employer-activity-list"></div>
+            </section>
+            <section class="employer-panel">
+              <div class="employer-panel-heading"><div><span class="employer-eyebrow">LỊCH TRÌNH</span><h2>Phỏng vấn sắp tới</h2></div><a href="interviews.html">Mở lịch <i class="fa-solid fa-arrow-right"></i></a></div>
+              <div id="upcomingInterviews" class="employer-interview-list"></div>
+            </section>
           </div>
         </div>
       </main>
@@ -128,60 +148,89 @@
     <script type="module" src="../js/app.js"></script>
     <script src="../js/navbar.js"></script>
     <script type="module">
+      const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+      })[char]);
+
+      function statusLabel(status) {
+        return ({ applied: "Mới ứng tuyển", reviewing: "Đang xem xét", interview_invited: "Mời phỏng vấn", interviewed: "Đã phỏng vấn", offered: "Đã gửi offer", offer_accepted: "Đã đồng ý offer", hired: "Đã nhận việc", rejected: "Không đạt", withdrawn: "Ứng viên rút hồ sơ", interview_scheduled: "Mời phỏng vấn", accepted: "Đậu phỏng vấn", failed: "Không đạt" })[status] || "Đang xử lý";
+      }
+
+      function formatDate(value) {
+        if (!value) return "Chưa đặt hạn";
+        const date = new Date(value);
+        return Number.isNaN(date.getTime()) ? "Chưa đặt hạn" : date.toLocaleDateString("vi-VN");
+      }
+
+      function formatSalary(job) {
+        if (job.salaryMin != null && job.salaryMax != null) {
+          return `${(Number(job.salaryMin) / 1000000).toLocaleString("vi-VN")}–${(Number(job.salaryMax) / 1000000).toLocaleString("vi-VN")} triệu`;
+        }
+        return job.salary || "Thỏa thuận";
+      }
+
       async function initDashboard() {
         const user = window.Auth.requireAuth(["employer"]);
         if (!user) return;
         window.App.renderSidebar("employer", "dashboard");
-        document.getElementById("greeting").textContent =
-          `👋 Xin chào, ${user.fullName}!`;
+        const greetingName = user.fullName || "Nhà tuyển dụng";
+        document.getElementById("greeting").textContent = `Chào ${greetingName}`;
 
-        const myJobs = await window.DB.getJobsByEmployer(user.id);
-        
-        const appsPromises = myJobs.map(j => window.DB.getApplicationsByJob(j.id));
-        const allAppsResults = await Promise.all(appsPromises);
-        const allApps = allAppsResults.flat();
-        
-        const totalViews = myJobs.reduce((s, j) => s + (j.views || 0), 0);
+        const [myJobs, allApps, interviews, company] = await Promise.all([
+          window.DB.getJobsByEmployer(user.id),
+          window.DB.getApplications(),
+          window.DB.getInterviews(),
+          window.DB.getCompanyByEmployer(user.id),
+        ]);
+        const now = Date.now();
+        const openJobs = myJobs.filter((job) => job.status === "active" && (!job.expiresAt || new Date(job.expiresAt).getTime() > now));
+        const pendingApps = allApps.filter((application) => ["applied", "reviewing"].includes(application.status));
+        const upcoming = interviews.filter((interview) => new Date(`${interview.date}T${interview.time || "00:00"}`).getTime() >= now)
+          .sort((a, b) => new Date(`${a.date}T${a.time || "00:00"}`) - new Date(`${b.date}T${b.time || "00:00"}`));
+        const totalViews = myJobs.reduce((sum, job) => sum + (Number(job.views) || 0), 0);
 
         document.getElementById("stats").innerHTML = `
-        <div class="stat-card animate-fade-up"><div class="stat-icon blue"><i class="fa-solid fa-file-lines"></i></div><div class="stat-value">${myJobs.length}</div><div class="stat-label">Tin đã đăng</div></div>
-        <div class="stat-card animate-fade-up"><div class="stat-icon green"><i class="fa-solid fa-envelope-open-text"></i></div><div class="stat-value">${allApps.length}</div><div class="stat-label">Lượt ứng tuyển</div></div>
-        <div class="stat-card animate-fade-up"><div class="stat-icon orange"><i class="fa-solid fa-eye"></i></div><div class="stat-value">${totalViews}</div><div class="stat-label">Lượt xem</div></div>
-        <div class="stat-card animate-fade-up"><div class="stat-icon cyan"><i class="fa-solid fa-hourglass-half"></i></div><div class="stat-value">${allApps.filter((a) => a.status === "pending").length}</div><div class="stat-label">Chờ duyệt</div></div>
-      `;
+          <article class="employer-stat-card"><span class="employer-stat-icon"><i class="fa-solid fa-bullhorn"></i></span><div><strong>${openJobs.length}</strong><span>Tin đang tuyển</span></div><small>${myJobs.length} tin đã đăng</small></article>
+          <article class="employer-stat-card"><span class="employer-stat-icon"><i class="fa-solid fa-inbox"></i></span><div><strong>${pendingApps.length}</strong><span>Hồ sơ mới</span></div><small>Chờ nhà tuyển dụng xử lý</small></article>
+          <article class="employer-stat-card"><span class="employer-stat-icon"><i class="fa-regular fa-calendar-check"></i></span><div><strong>${upcoming.length}</strong><span>Phỏng vấn sắp tới</span></div><small>Ứng viên đã được mời</small></article>
+          <article class="employer-stat-card"><span class="employer-stat-icon"><i class="fa-regular fa-eye"></i></span><div><strong>${totalViews.toLocaleString("vi-VN")}</strong><span>Lượt xem tin</span></div><small>Tổng lượt xem các tin của bạn</small></article>`;
 
-        // Recent jobs
-        const recentJobsHTML = [];
-        const recentJobsList = myJobs.slice(-3).reverse();
-        for (const j of recentJobsList) {
-          const apps = await window.DB.getApplicationsByJob(j.id);
-          recentJobsHTML.push(`
-            <div class="dashboard-list-item flex-between">
-              <div><strong class="item-title">${j.title}</strong><br><span class="item-subtitle">${j.salary} · ${j.location}</span></div>
-              <span class="badge badge-info">${apps.length} CV</span>
-            </div>
-          `);
-        }
+        const applicationCounts = {
+          applied: allApps.filter((app) => ["applied", "reviewing"].includes(app.status)).length,
+          interview: allApps.filter((app) => app.status === "interview_invited").length,
+          accepted: allApps.filter((app) => ["hired", "accepted"].includes(app.status)).length,
+          rejected: allApps.filter((app) => ["rejected", "failed"].includes(app.status)).length,
+        };
+        const maxCount = Math.max(1, ...Object.values(applicationCounts));
+        document.getElementById("applicationPipeline").innerHTML = [
+          ["Mới nhận", applicationCounts.applied], ["Phỏng vấn", applicationCounts.interview],
+          ["Đậu phỏng vấn", applicationCounts.accepted], ["Đã đóng", applicationCounts.rejected],
+        ].map(([label, count]) => `<div class="employer-pipeline-row"><div><span>${label}</span><strong>${count}</strong></div><div class="employer-pipeline-track"><span style="width:${Math.max(count ? 8 : 0, Math.round(count / maxCount * 100))}%"></span></div></div>`).join("");
 
-        document.getElementById("recentJobs").innerHTML = recentJobsHTML.join("") ||
-          '<p style="color:var(--text-light);padding:20px 0">Chưa đăng tin nào</p>';
+        const sortedJobs = [...myJobs].sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+        document.getElementById("recentJobs").innerHTML = sortedJobs.length ? sortedJobs.slice(0, 4).map((job) => {
+          const jobApps = allApps.filter((application) => String(application.jobId) === String(job.id));
+          const isOpen = job.status === "active" && (!job.expiresAt || new Date(job.expiresAt).getTime() > now);
+          return `<article class="employer-job-row"><div class="employer-job-title-wrap"><span class="employer-job-mark"><i class="fa-solid fa-briefcase"></i></span><div><a href="job-applicants.html?id=${encodeURIComponent(job.id)}">${escapeHtml(job.title)}</a><small>${escapeHtml(job.location || "Chưa cập nhật")} · ${escapeHtml(formatSalary(job))}</small></div></div><div class="employer-job-result"><span class="employer-job-status ${isOpen ? "is-open" : "is-closed"}">${isOpen ? "Đang tuyển" : "Đã đóng"}</span><strong>${jobApps.length} hồ sơ</strong></div><div class="employer-job-deadline"><small>Hạn nhận hồ sơ</small><strong>${escapeHtml(formatDate(job.expiresAt))}</strong></div></article>`;
+        }).join("") : `<div class="employer-empty-state"><span><i class="fa-regular fa-rectangle-list"></i></span><strong>Bạn chưa có tin tuyển dụng</strong><p>Đăng tin đầu tiên để bắt đầu nhận hồ sơ ứng viên.</p><a href="post-job.html">Tạo tin tuyển dụng <i class="fa-solid fa-arrow-right"></i></a></div>`;
 
-        // Recent applications
-        const recentApps = allApps
-          .sort((a, b) => new Date(b.appliedAt) - new Date(a.appliedAt))
-          .slice(0, 5);
-        
-        const recentAppsHTML = [];
-        for (const a of recentApps) {
-          const job = await window.DB.getJobById(a.jobId);
-          recentAppsHTML.push(`<div class="dashboard-list-item flex-between">
-            <div><strong class="item-title">${window.App.profileLink("candidate", a.candidateId || a.applicantId, a.fullName)}</strong><br><span class="item-subtitle">${job ? job.title : "-"} · ${window.App.timeAgo(a.appliedAt)}</span></div>
-            <span class="badge badge-warning"><i class="fa-solid fa-hourglass-half"></i></span>
-          </div>`);
-        }
-        
-        document.getElementById("recentApps").innerHTML = recentAppsHTML.join("") ||
-          '<p style="color:var(--text-light);padding:20px 0">Chưa có ứng viên</p>';
+        const recentApps = [...allApps].sort((a, b) => new Date(b.appliedAt || 0) - new Date(a.appliedAt || 0)).slice(0, 5);
+        document.getElementById("recentApps").innerHTML = recentApps.length ? recentApps.map((application) => {
+          const candidateId = application.candidateId || application.applicantId;
+          return `<article class="employer-activity-row"><span class="employer-candidate-avatar">${escapeHtml((application.fullName || "U").trim().charAt(0).toUpperCase())}</span><div class="employer-activity-main"><strong>${window.App.profileLink("candidate", candidateId, application.fullName || "Ứng viên")}</strong><small>${escapeHtml(application.jobTitle || "Tin tuyển dụng")} · ${escapeHtml(window.App.timeAgo(application.appliedAt))}</small></div><span class="employer-application-status status-${escapeHtml(application.status)}">${escapeHtml(statusLabel(application.status))}</span><a class="employer-row-arrow" href="job-applicants.html?id=${encodeURIComponent(application.jobId)}" aria-label="Xem hồ sơ"><i class="fa-solid fa-arrow-up-right-from-square"></i></a></article>`;
+        }).join("") : `<div class="employer-empty-state compact"><span><i class="fa-solid fa-user-plus"></i></span><strong>Chưa có hồ sơ ứng tuyển</strong><p>Khi có ứng viên nộp hồ sơ, thông tin sẽ hiện ở đây.</p></div>`;
+
+        const upcomingItems = upcoming.slice(0, 4);
+        const interviewRows = await Promise.all(upcomingItems.map(async (interview) => {
+          const application = await window.DB.getApplicationById(interview.applicationId);
+          const interviewDate = new Date(`${interview.date}T${interview.time || "00:00"}`);
+          return `<article class="employer-interview-row"><div class="employer-interview-date"><strong>${String(interviewDate.getDate()).padStart(2, "0")}</strong><span>${interviewDate.toLocaleDateString("vi-VN", { month: "short" })}</span></div><div class="employer-activity-main"><strong>${escapeHtml(application?.fullName || "Ứng viên")}</strong><small>${escapeHtml(interview.jobTitle || "Tin tuyển dụng")} · ${escapeHtml(interview.time || "")}</small></div><span class="employer-interview-type">${interview.type === "online" ? "Trực tuyến" : "Trực tiếp"}</span></article>`;
+        }));
+        document.getElementById("upcomingInterviews").innerHTML = interviewRows.length ? interviewRows.join("") : `<div class="employer-empty-state compact"><span><i class="fa-regular fa-calendar"></i></span><strong>Chưa có lịch phỏng vấn</strong><p>Lịch hẹn đã xác nhận sẽ xuất hiện tại đây.</p></div>`;
+
+        const profileFields = [company?.description, company?.industry, company?.size, company?.location, company?.website, company?.logoUrl || company?.logo];
+        const completeness = Math.round(profileFields.filter((value) => String(value || "").trim()).length / profileFields.length * 100);
+        document.getElementById("companyPrompt").innerHTML = `<div class="employer-company-prompt-heading"><span class="employer-stat-icon"><i class="fa-regular fa-building"></i></span><div><span class="employer-eyebrow">THƯƠNG HIỆU TUYỂN DỤNG</span><h2>${escapeHtml(company?.name || "Hoàn thiện hồ sơ công ty")}</h2></div></div><p>Hồ sơ đầy đủ giúp ứng viên hiểu rõ hơn về doanh nghiệp của bạn.</p><div class="employer-profile-progress"><span style="width:${completeness}%"></span></div><div class="employer-profile-progress-note"><span>Độ hoàn thiện</span><strong>${completeness}%</strong></div><a href="company-profile.html">${company ? "Xem hồ sơ công ty" : "Tạo hồ sơ công ty"}<i class="fa-solid fa-arrow-right"></i></a>`;
 
         // Responsive sidebar toggle
         if (window.innerWidth <= 1024) {

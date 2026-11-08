@@ -168,7 +168,7 @@
         }
 
         const interviewPromises = apps
-          .filter((a) => a.status === "interview_scheduled")
+          .filter((a) => ["scheduled", "confirmed"].includes(a.interviewStatus))
           .map((a) => window.DB.getInterviewByApplication(a.id));
         const interviews = (await Promise.all(interviewPromises)).filter((i) => i);
 
@@ -176,8 +176,8 @@
         document.getElementById("stats").innerHTML = `
         <div class="stat-card animate-fade-up"><div class="stat-icon blue"><i class="fa-solid fa-envelope-open-text"></i></div><div class="stat-value">${apps.length}</div><div class="stat-label">Đã ứng tuyển</div></div>
         <div class="stat-card animate-fade-up"><div class="stat-icon purple"><i class="fa-solid fa-calendar-days"></i></div><div class="stat-value">${interviews.length}</div><div class="stat-label">Lịch phỏng vấn</div></div>
-        <div class="stat-card animate-fade-up"><div class="stat-icon green"><i class="fa-solid fa-circle-check"></i></div><div class="stat-value">${apps.filter((a) => a.status === "accepted").length}</div><div class="stat-label">Trúng tuyển</div></div>
-        <div class="stat-card animate-fade-up"><div class="stat-icon orange"><i class="fa-solid fa-hourglass-half"></i></div><div class="stat-value">${apps.filter((a) => ["applied", "pending"].includes(a.status)).length}</div><div class="stat-label">Đang chờ</div></div>
+        <div class="stat-card animate-fade-up"><div class="stat-icon green"><i class="fa-solid fa-circle-check"></i></div><div class="stat-value">${apps.filter((a) => ["hired", "accepted"].includes(a.status)).length}</div><div class="stat-label">Đậu phỏng vấn</div></div>
+        <div class="stat-card animate-fade-up"><div class="stat-icon orange"><i class="fa-solid fa-hourglass-half"></i></div><div class="stat-value">${apps.filter((a) => ["applied", "reviewing"].includes(a.status)).length}</div><div class="stat-label">Đang xử lý</div></div>
         <div class="stat-card animate-fade-up"><div class="stat-icon red"><i class="fa-solid fa-heart"></i></div><div class="stat-value">${saved.length}</div><div class="stat-label">Đã lưu</div></div>
         <a href="profile-views.html" class="stat-card animate-fade-up" style="color:inherit;text-decoration:none"><div class="stat-icon orange"><i class="fa-solid fa-eye"></i></div><div class="stat-value">${profileViews.length}</div><div class="stat-label">Lượt xem hồ sơ</div></a>
       `;
@@ -208,10 +208,15 @@
               '<i class="fa-solid fa-hourglass-half"></i> Đang chờ',
               "badge-warning",
             ],
-            accepted: [
-              '<i class="fa-solid fa-circle-check"></i> Chấp nhận',
+            reviewing: ['<i class="fa-solid fa-magnifying-glass"></i> Đang xem xét', "badge-warning"],
+            interview_invited: ['<i class="fa-solid fa-calendar-check"></i> Mời phỏng vấn', "badge-info"],
+            interviewed: ['<i class="fa-solid fa-user-check"></i> Đã phỏng vấn', "badge-info"],
+            offered: ['<i class="fa-solid fa-file-signature"></i> Đã gửi offer', "badge-info"],
+            offer_accepted: [
+              '<i class="fa-solid fa-circle-check"></i> Đậu phỏng vấn',
               "badge-success",
             ],
+            hired: ['<i class="fa-solid fa-briefcase"></i> Đã nhận việc', "badge-success"],
             rejected: [
               '<i class="fa-solid fa-circle-xmark"></i> Từ chối',
               "badge-danger",

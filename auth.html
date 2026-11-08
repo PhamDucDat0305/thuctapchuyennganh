@@ -198,6 +198,10 @@
                 required
               />
             </div>
+            <label class="password-visibility-toggle">
+              <input type="checkbox" onchange="togglePasswordVisibility(['password_reg','password_confirm'], this.checked)" />
+              <span>Hiện mật khẩu</span>
+            </label>
             <button type="submit" class="btn btn-primary btn-block btn-lg mt-2">
               Đăng ký
             </button>
@@ -242,6 +246,10 @@
                 required
               />
             </div>
+            <label class="password-visibility-toggle">
+              <input type="checkbox" onchange="togglePasswordVisibility(['password'], this.checked)" />
+              <span>Hiện mật khẩu</span>
+            </label>
             <button type="submit" class="btn btn-primary btn-block btn-lg mt-3">
               Đăng nhập
             </button>
@@ -312,6 +320,13 @@
     <script>
       /* ===== Chuyển tab ===== */
       const container = document.getElementById("container");
+
+      function togglePasswordVisibility(inputIds, visible) {
+        inputIds.forEach((id) => {
+          const input = document.getElementById(id);
+          if (input) input.type = visible ? "text" : "password";
+        });
+      }
       const registerBtn = document.getElementById("register");
       const loginBtn = document.getElementById("login");
 
@@ -481,8 +496,10 @@
           return;
         }
 
-        // Register API has already created the SQL Server session.
-        window.location.href = "index.html";
+        // Registration creates the session; send each role to its own workspace.
+        window.location.href = result.user.role === "employer"
+          ? "employer/dashboard.html"
+          : "index.html";
       }
 
       /* ===== Đăng nhập ===== */
@@ -500,7 +517,9 @@
           return;
         }
 
-        window.location.href = "index.html";
+        window.location.href = result.user.role === "admin"
+          ? "admin/dashboard.html"
+          : result.user.role === "employer" ? "employer/dashboard.html" : "index.html";
       }
     </script>
   </body>

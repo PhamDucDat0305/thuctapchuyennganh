@@ -128,7 +128,6 @@
               <div>
                 <h3 style="margin-bottom: 8px" id="displayName">Người dùng</h3>
                 <p style="color: var(--text-light); font-size: 0.9rem">
-                  Ảnh đại diện được tạo tự động từ tên của bạn.
                 </p>
               </div>
             </div>
@@ -184,6 +183,16 @@
       document.getElementById("displayName").textContent = user.fullName;
       document.getElementById("avatarPreview").textContent =
         user.fullName[0].toUpperCase();
+      window.DB.getCompanyByEmployer(user.id).then((company) => {
+        const logo = company?.logoUrl || company?.logo;
+        if (!logo) return;
+        const image = document.createElement("img");
+        image.src = logo;
+        image.alt = "Logo công ty";
+        image.style.cssText = "width:100%;height:100%;border-radius:inherit;object-fit:cover";
+        image.onerror = () => image.remove();
+        document.getElementById("avatarPreview").replaceChildren(image);
+      }).catch((error) => console.warn("Không tải được logo công ty", error));
 
       async function updateAccount(e) {
         e.preventDefault();

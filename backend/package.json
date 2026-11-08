@@ -7,6 +7,7 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
+    "admin:seed": "node scripts/seed-admin.js",
     "test:mail": "node src/test-mail.js",
     "test:frontend": "node scripts/test-frontend-host.js"
   },

@@ -21,7 +21,7 @@ const interviewSelect = `
   SELECT i.id, i.application_id AS applicationId,
     CONVERT(char(10), i.interview_date, 23) AS date,
     CONVERT(char(5), i.interview_time, 108) AS time,
-    i.interview_type AS type, i.notes,
+    i.interview_type AS type, i.notes, i.status AS status,
     i.created_at AS createdAt, i.updated_at AS updatedAt,
     a.candidate_id AS candidateId, j.recruiter_id AS createdBy,
     j.title AS jobTitle, c.id AS companyId, c.name AS companyName
@@ -57,6 +57,51 @@ router.get('/application/:applicationId', asyncHandler(async (req, res) => {
   return res.json(result.recordset[0] || null);
 }));
 
+router.patch('/:id/decision', requireRole('employer'), asyncHandler(async (req, res) => {
+  if (!validId(req.params.id)) return res.status(400).json({ error: 'Mã lịch phỏng vấn không hợp lệ' });
+  const decision = req.body?.decision;
+  if (!['accepted', 'rejected'].includes(decision)) {
+    return res.status(400).json({ error: 'Kết quả phỏng vấn không hợp lệ' });
+  }
+
+  const transaction = new sql.Transaction(getPool());
+  await transaction.begin();
+  try {
+    const request = new sql.Request(transaction)
+      .input('id', sql.BigInt, req.params.id)
+      .input('recruiterId', sql.BigInt, req.user.id);
+    const found = await request.query(`
+      SELECT i.status AS interviewStatus, a.id AS applicationId, a.status AS applicationStatus
+      FROM dbo.interviews i WITH (UPDLOCK, ROWLOCK)
+      INNER JOIN dbo.applications a ON a.id = i.application_id
+      INNER JOIN dbo.jobs j ON j.id = a.job_id
+      WHERE i.id = @id AND j.recruiter_id = @recruiterId`);
+    const row = found.recordset[0];
+    if (!row) {
+      await transaction.rollback();
+      return res.status(404).json({ error: 'Không tìm thấy lịch phỏng vấn trong tin của bạn' });
+    }
+    if (!['scheduled', 'confirmed'].includes(row.interviewStatus)
+      || !['interview_invited', 'interviewed'].includes(row.applicationStatus)) {
+      await transaction.rollback();
+      return res.status(409).json({ error: 'Lịch phỏng vấn này đã được xử lý' });
+    }
+
+    await new sql.Request(transaction)
+      .input('id', sql.BigInt, req.params.id)
+      .query("UPDATE dbo.interviews SET status = N'completed', updated_at = SYSUTCDATETIME() WHERE id = @id");
+    await new sql.Request(transaction)
+      .input('applicationId', sql.BigInt, row.applicationId)
+      .input('decision', sql.NVarChar(30), decision)
+      .query('UPDATE dbo.applications SET status = @decision, updated_at = SYSUTCDATETIME() WHERE id = @applicationId');
+    await transaction.commit();
+    return res.json({ ok: true, decision, interviewStatus: 'completed' });
+  } catch (error) {
+    await transaction.rollback().catch(() => {});
+    throw error;
+  }
+}));
+
 router.post('/', requireRole('employer'), asyncHandler(async (req, res) => {
   const body = req.body || {};
   const applicationId = String(body.applicationId || '');
@@ -90,7 +135,7 @@ router.post('/', requireRole('employer'), asyncHandler(async (req, res) => {
       FROM dbo.applications AS a
       INNER JOIN dbo.jobs AS j ON j.id = a.job_id
       WHERE a.id = @applicationId AND j.recruiter_id = @recruiterId
-        AND a.status IN (N'applied', N'interview_scheduled')`);
+        AND a.status IN (N'applied', N'reviewing', N'interview_invited')`);
     if (!owned.recordset.length) {
       await transaction.rollback();
       return res.status(404).json({ error: 'Không tìm thấy đơn ứng tuyển trong tin của bạn' });
@@ -103,7 +148,7 @@ router.post('/', requireRole('employer'), asyncHandler(async (req, res) => {
             scheduled_at = DATEADD(MINUTE,
               DATEDIFF(MINUTE, CONVERT(time(0), '00:00'), CONVERT(time(0), @time, 108)),
               CONVERT(datetime2(0), @date)),
-            interview_type = @type, notes = @notes, updated_at = SYSUTCDATETIME()
+            interview_type = @type, notes = @notes, status = N'scheduled', updated_at = SYSUTCDATETIME()
         WHERE application_id = @applicationId;
       ELSE
         INSERT INTO dbo.interviews
@@ -115,7 +160,7 @@ router.post('/', requireRole('employer'), asyncHandler(async (req, res) => {
           @type, @notes);
 
       UPDATE dbo.applications
-      SET status = N'interview_scheduled', updated_at = SYSUTCDATETIME()
+      SET status = N'interview_invited', updated_at = SYSUTCDATETIME()
       WHERE id = @applicationId;`);
     await transaction.commit();
 
@@ -124,6 +169,62 @@ router.post('/', requireRole('employer'), asyncHandler(async (req, res) => {
       .input('recruiterId', sql.BigInt, req.user.id)
       .query(`${interviewSelect} WHERE i.application_id = @applicationId AND j.recruiter_id = @recruiterId`);
     return res.status(201).json(result.recordset[0]);
+  } catch (error) {
+    await transaction.rollback().catch(() => {});
+    throw error;
+  }
+}));
+
+router.patch('/:id/status', asyncHandler(async (req, res) => {
+  if (!validId(req.params.id)) return res.status(400).json({ error: 'Mã lịch phỏng vấn không hợp lệ' });
+  const status = req.body?.status;
+  const candidateStatuses = ['confirmed', 'declined'];
+  const employerStatuses = ['canceled', 'no_show'];
+  const allowed = req.user.role === 'candidate' ? candidateStatuses : employerStatuses;
+  if (!allowed.includes(status)) return res.status(400).json({ error: 'Trạng thái lịch phỏng vấn không hợp lệ' });
+
+  const transaction = new sql.Transaction(getPool());
+  await transaction.begin();
+  try {
+    const request = new sql.Request(transaction).input('id', sql.BigInt, req.params.id);
+    let access = '';
+    if (req.user.role === 'candidate') {
+      request.input('candidateId', sql.BigInt, req.user.id);
+      access = ' AND a.candidate_id = @candidateId';
+    } else if (req.user.role === 'employer') {
+      request.input('recruiterId', sql.BigInt, req.user.id);
+      access = ' AND j.recruiter_id = @recruiterId';
+    }
+    const found = await request.query(`
+      SELECT i.status AS interviewStatus, a.id AS applicationId, a.status AS applicationStatus
+      FROM dbo.interviews i WITH (UPDLOCK, ROWLOCK)
+      INNER JOIN dbo.applications a ON a.id = i.application_id
+      INNER JOIN dbo.jobs j ON j.id = a.job_id
+      WHERE i.id = @id${access}`);
+    const row = found.recordset[0];
+    if (!row) {
+      await transaction.rollback();
+      return res.status(404).json({ error: 'Không tìm thấy lịch phỏng vấn trong phạm vi của bạn' });
+    }
+    const validCandidateMove = req.user.role !== 'candidate' || row.interviewStatus === 'scheduled';
+    const validEmployerMove = req.user.role !== 'employer'
+      || (['no_show'].includes(status) && ['scheduled', 'confirmed'].includes(row.interviewStatus))
+      || (status === 'canceled' && row.interviewStatus !== 'completed' && row.interviewStatus !== 'canceled');
+    if (!validCandidateMove || !validEmployerMove) {
+      await transaction.rollback();
+      return res.status(409).json({ error: 'Không thể chuyển lịch từ trạng thái hiện tại' });
+    }
+    await new sql.Request(transaction).input('id', sql.BigInt, req.params.id)
+      .input('status', sql.NVarChar(30), status)
+      .query('UPDATE dbo.interviews SET status = @status, updated_at = SYSUTCDATETIME() WHERE id = @id');
+
+    if (req.user.role === 'employer' && status === 'canceled') {
+      await new sql.Request(transaction).input('applicationId', sql.BigInt, row.applicationId)
+        .query(`UPDATE dbo.applications SET status = N'reviewing', updated_at = SYSUTCDATETIME()
+          WHERE id = @applicationId AND status = N'interview_invited'`);
+    }
+    await transaction.commit();
+    return res.json({ ok: true, status });
   } catch (error) {
     await transaction.rollback().catch(() => {});
     throw error;

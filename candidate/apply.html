@@ -125,13 +125,18 @@
             card.innerHTML = '<div class="empty-state"><div class="empty-icon"><i class="fa-solid fa-circle-xmark"></i></div><h3>Không tìm thấy việc làm</h3></div>';
             return;
           }
-          const hasApplied = await window.DB.hasApplied(jobId, user.id);
-          if (hasApplied) {
+          const eligibility = await window.DB.getApplicationEligibility(jobId);
+          if (eligibility.hasApplied) {
             card.innerHTML = '<div class="empty-state"><div class="empty-icon"><i class="fa-solid fa-circle-check"></i></div><h3>Bạn đã ứng tuyển việc này</h3><p>Theo dõi trạng thái tại trang "Việc đã ứng tuyển"</p><a href="my-applications.html" class="btn btn-primary mt-2">Xem danh sách</a></div>';
+            return;
+          }
+          if (eligibility.blockedByActiveEmployment) {
+            card.innerHTML = `<div class="empty-state"><div class="empty-icon"><i class="fa-solid fa-handshake"></i></div><h3>Bạn đang hợp tác với công ty này</h3><p>Bạn có thể ứng tuyển vào công ty khác. Để ứng tuyển tiếp tại ${escapeHtml(eligibility.companyName || "công ty này")}, hãy đợi đến khi trạng thái hợp tác kết thúc.</p><a href="../job-list.html" class="btn btn-primary mt-2">Tìm việc ở công ty khác</a></div>`;
             return;
           }
 
           const company = job.companyId ? await window.DB.getCompanyById(job.companyId) : null;
+          const candidateCvs = await window.DB.getCandidateCvs();
           const jobType = job.type === "full-time" ? "Toàn thời gian" : job.type === "part-time" ? "Bán thời gian" : job.type;
 
           card.innerHTML = `
@@ -192,9 +197,14 @@
                 <input type="email" class="form-input" id="email" value="${escapeHtml(user.email)}" readonly required>
               </div>
               <div class="form-group">
+                <label class="form-label" for="cvFileId">CV đã tải lên (không bắt buộc)</label>
+                <select class="form-input" id="cvFileId"><option value="">Không chọn CV đã tải lên</option>${candidateCvs.filter((cv) => cv.isAvailable !== false).map((cv) => `<option value="${cv.id}" ${cv.isDefault ? "selected" : ""}>${escapeHtml(cv.title)} · ${escapeHtml(cv.originalName)}</option>`).join("")}</select>
+                <p class="form-hint">Quản lý tệp tại mục “CV của tôi”.</p>
+              </div>
+              <div class="form-group">
                 <label class="form-label" for="cv">Nội dung giới thiệu / CV (văn bản)</label>
-                <textarea class="form-textarea" id="cv" rows="6" required placeholder="Mô tả kinh nghiệm, kỹ năng, lý do bạn phù hợp với vị trí này..."></textarea>
-                <p class="form-hint">Nhập nội dung dạng văn bản; hiện chưa hỗ trợ tải lên tệp CV.</p>
+                <textarea class="form-textarea" id="cv" rows="6" placeholder="Có thể bổ sung nội dung giới thiệu cho nhà tuyển dụng..."></textarea>
+                <p class="form-hint">Bạn cần chọn tệp CV đã tải lên hoặc nhập nội dung giới thiệu.</p>
               </div>
               <button type="submit" class="btn btn-primary btn-large w-100"><i class="fa-solid fa-paper-plane"></i> Gửi ứng tuyển</button>
             </form>
@@ -202,6 +212,9 @@
 
         window.submitApplication = async function(e) {
           e.preventDefault();
+          const cvId = document.getElementById("cvFileId").value;
+          const cvText = document.getElementById("cv").value.trim();
+          if (!cvId && !cvText) { Toast.error("Hãy chọn CV đã tải lên hoặc nhập nội dung giới thiệu."); return; }
           const btn = e.target.querySelector('button[type="submit"]');
           btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Đang gửi...';
           btn.disabled = true;
@@ -209,7 +222,8 @@
           try {
             await window.DB.createApplication({
               jobId,
-              cv: document.getElementById("cv").value.trim(),
+              cv: cvText,
+              cvId,
             });
             Toast.success("🎉 Ứng tuyển thành công! Nhà tuyển dụng sẽ xem hồ sơ của bạn.");
             setTimeout(() => { location.href = "my-applications.html"; }, 1500);

@@ -11,7 +11,8 @@ const jobSelect = `
   SELECT j.id, j.title, j.description, j.requirements, j.benefits,
     j.category, j.location, j.salary_display AS salary,
     j.salary_min AS salaryMin, j.salary_max AS salaryMax,
-    j.job_type AS type, j.experience, j.status, j.views,
+    j.job_type AS type, j.experience, j.status,
+    j.admin_visibility AS adminVisibility, j.views,
     j.created_at AS createdAt, j.expires_at AS expiresAt,
     j.recruiter_id AS createdBy, j.recruiter_id AS recruiterId,
     c.id AS companyId, c.name AS companyName

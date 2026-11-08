@@ -137,11 +137,20 @@
 
 
         const statusMap = {
-          applied: ['<i class="fa-solid fa-envelope"></i> Đã nộp hồ sơ', "badge-info"],
-          interview_scheduled: ['<i class="fa-solid fa-calendar-check"></i> Đang phỏng vấn', "badge-warning"],
-          accepted: ['<i class="fa-solid fa-circle-check"></i> Trúng tuyển', "badge-success"],
-          rejected: ['<i class="fa-solid fa-circle-xmark"></i> Từ chối', "badge-danger"],
-          failed: ['<i class="fa-solid fa-user-xmark"></i> Không đạt', "badge-dark"],
+          applied: ['<i class="fa-solid fa-envelope"></i> Mới ứng tuyển', "badge-info"],
+          reviewing: ['<i class="fa-solid fa-magnifying-glass"></i> Đang xem xét', "badge-warning"],
+          interview_invited: ['<i class="fa-solid fa-calendar-check"></i> Mời phỏng vấn', "badge-warning"],
+          interviewed: ['<i class="fa-solid fa-user-check"></i> Đã phỏng vấn', "badge-info"],
+          offered: ['<i class="fa-solid fa-file-signature"></i> Đã gửi offer', "badge-info"],
+          offer_accepted: ['<i class="fa-solid fa-circle-check"></i> Đã đồng ý offer', "badge-success"],
+          offer_declined: ['<i class="fa-solid fa-circle-xmark"></i> Đã từ chối offer', "badge-dark"],
+          hired: ['<i class="fa-solid fa-briefcase"></i> Đã nhận việc', "badge-success"],
+          employment_ended: ['<i class="fa-solid fa-circle-minus"></i> Đã kết thúc hợp tác', "badge-neutral"],
+          rejected: ['<i class="fa-solid fa-circle-xmark"></i> Nhà tuyển dụng từ chối', "badge-danger"],
+          withdrawn: ['<i class="fa-solid fa-arrow-rotate-left"></i> Đã rút hồ sơ', "badge-neutral"],
+          interview_scheduled: ['<i class="fa-solid fa-calendar-check"></i> Mời phỏng vấn', "badge-warning"],
+          accepted: ['<i class="fa-solid fa-circle-check"></i> Đậu phỏng vấn', "badge-success"],
+          failed: ['<i class="fa-solid fa-circle-xmark"></i> Nhà tuyển dụng từ chối', "badge-danger"],
         };
 
         async function renderLists(allApps) {
@@ -176,7 +185,7 @@
              const [label, cls] = statusMap[a.status] || ["Chưa rõ", "badge-neutral"];
              let extraInfo = "";
 
-             if (a.status === "interview_scheduled") {
+             if (a.interviewStatus && ["scheduled", "confirmed", "declined"].includes(a.interviewStatus)) {
                const interview = await window.DB.getInterviewByApplication(a.id);
                if (interview) {
                  extraInfo = `<div class="interview-info"><i class="fa-solid fa-clock"></i> ${interview.date} · ${interview.time} (${interview.type})</div>`;
@@ -191,7 +200,7 @@
                 <td data-label="Trạng thái"><span class="badge ${cls}">${label}</span></td>
                 <td data-label="Hành động">
                   ${job ? `<button onclick="window.location.href='../job-detail.html?id=${job.id}'" class="btn btn-sm btn-ghost">Xem tin</button>` : ""}
-                  ${["applied", "interview_scheduled"].includes(a.status) ? `<button onclick="window.cancelApplication('${a.id}')" class="btn btn-sm btn-danger"><i class="fa-solid fa-trash-can"></i> Hủy</button>` : ""}
+                  ${["applied", "reviewing", "interview_invited", "interviewed", "offered", "offer_accepted"].includes(a.status) ? `<button onclick="window.cancelApplication('${a.id}')" class="btn btn-sm btn-danger"><i class="fa-solid fa-arrow-rotate-left"></i> Rút hồ sơ</button>` : ""}
                 </td>
               </tr>
              `);

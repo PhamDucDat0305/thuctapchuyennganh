@@ -39,7 +39,9 @@ const jobSelect = `
 router.get('/', asyncHandler(async (req, res) => {
   const result = await getPool().request().query(`
     ${jobSelect}
+    INNER JOIN dbo.users AS owner ON owner.id = j.recruiter_id
     WHERE j.status = N'active'
+      AND j.admin_visibility = N'visible' AND c.admin_status = N'active' AND owner.admin_locked = 0
       AND (j.expires_at IS NULL OR j.expires_at > SYSUTCDATETIME())
     ORDER BY j.created_at DESC, j.id DESC`);
 
@@ -62,6 +64,9 @@ router.post('/:id/view', limitJobViews, asyncHandler(async (req, res) => {
       OUTPUT inserted.id INTO @updatedJobs(job_id)
       WHERE id = @id
         AND status = N'active'
+        AND admin_visibility = N'visible'
+        AND EXISTS (SELECT 1 FROM dbo.companies c WHERE c.id = dbo.jobs.company_id AND c.admin_status = N'active')
+        AND EXISTS (SELECT 1 FROM dbo.users u WHERE u.id = dbo.jobs.recruiter_id AND u.admin_locked = 0)
         AND (expires_at IS NULL OR expires_at > SYSUTCDATETIME())
         AND (@viewerId IS NULL OR recruiter_id <> @viewerId);
 
@@ -82,8 +87,10 @@ router.get('/:id', asyncHandler(async (req, res) => {
     .input('id', sql.BigInt, req.params.id)
     .query(`
       ${jobSelect}
+      INNER JOIN dbo.users AS owner ON owner.id = j.recruiter_id
       WHERE j.id = @id
         AND j.status = N'active'
+        AND j.admin_visibility = N'visible' AND c.admin_status = N'active' AND owner.admin_locked = 0
         AND (j.expires_at IS NULL OR j.expires_at > SYSUTCDATETIME())`);
 
   if (result.recordset.length === 0) {

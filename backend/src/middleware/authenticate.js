@@ -13,10 +13,10 @@ module.exports = asyncHandler(async (req, res, next) => {
   const result = await getPool()
     .request()
     .input('id', sql.BigInt, userId)
-    .query('SELECT id, email, full_name, role, status, phone, search_status FROM dbo.users WHERE id = @id');
+    .query('SELECT id, email, full_name, role, status, phone, search_status, admin_locked FROM dbo.users WHERE id = @id');
 
   const row = result.recordset[0];
-  if (!row || row.status !== 'active') {
+  if (!row || row.status !== 'active' || row.admin_locked) {
     await destroySession(req);
     return res.status(401).json({ error: 'Phiên đăng nhập không còn hiệu lực' });
   }

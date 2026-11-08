@@ -43,6 +43,54 @@ window.DB = {
     }
   },
 
+  async getSavedCandidates() {
+    return apiRequest('/employer/saved-candidates');
+  },
+
+  async saveCandidate(candidateId) {
+    return apiRequest(`/employer/saved-candidates/${encodeURIComponent(candidateId)}`, { method: 'POST' });
+  },
+
+  async unsaveCandidate(candidateId) {
+    return apiRequest(`/employer/saved-candidates/${encodeURIComponent(candidateId)}`, { method: 'DELETE' });
+  },
+
+  async getCandidateCvs() {
+    return apiRequest('/candidate-content/cvs');
+  },
+
+  async uploadCandidateCv(file, title) {
+    return apiRequest('/candidate-content/cvs', {
+      method: 'POST',
+      headers: { 'Content-Type': file.type || 'application/octet-stream', 'X-File-Name': encodeURIComponent(file.name), 'X-Cv-Title': encodeURIComponent(title || '') },
+      body: file,
+    });
+  },
+
+  async setDefaultCandidateCv(cvId) {
+    return apiRequest(`/candidate-content/cvs/${encodeURIComponent(cvId)}/default`, { method: 'PATCH' });
+  },
+
+  async deleteCandidateCv(cvId) {
+    return apiRequest(`/candidate-content/cvs/${encodeURIComponent(cvId)}`, { method: 'DELETE' });
+  },
+
+  async getCoverLetters() {
+    return apiRequest('/candidate-content/cover-letters');
+  },
+
+  async createCoverLetter(data) {
+    return apiRequest('/candidate-content/cover-letters', { method: 'POST', body: JSON.stringify(data) });
+  },
+
+  async updateCoverLetter(id, data) {
+    return apiRequest(`/candidate-content/cover-letters/${encodeURIComponent(id)}`, { method: 'PUT', body: JSON.stringify(data) });
+  },
+
+  async deleteCoverLetter(id) {
+    return apiRequest(`/candidate-content/cover-letters/${encodeURIComponent(id)}`, { method: 'DELETE' });
+  },
+
   /**
    * Update user data
    */
@@ -225,12 +273,17 @@ window.DB = {
   async hasApplied(jobId, candidateId) {
     if (!jobId || !candidateId) return false;
     try {
-      const result = await apiRequest(`/applications/check/${encodeURIComponent(jobId)}`);
+      const result = await this.getApplicationEligibility(jobId);
       return result.hasApplied;
     } catch (error) {
       console.error(`DB: hasApplied error for ${jobId}`, error);
       throw error;
     }
+  },
+
+  async getApplicationEligibility(jobId) {
+    if (!jobId) return { hasApplied: false, blockedByActiveEmployment: false };
+    return apiRequest(`/applications/check/${encodeURIComponent(jobId)}`);
   },
 
   /**
@@ -240,7 +293,7 @@ window.DB = {
     try {
       return await apiRequest("/applications", {
         method: "POST",
-        body: JSON.stringify({ jobId: data.jobId, cv: data.cv }),
+        body: JSON.stringify({ jobId: data.jobId, cv: data.cv, cvId: data.cvId || null }),
       });
     } catch (error) {
       console.error("DB: createApplication error", error);
@@ -356,6 +409,20 @@ window.DB = {
     }
   },
 
+  async updateInterviewStatus(interviewId, status) {
+    return apiRequest(`/interviews/${encodeURIComponent(interviewId)}/status`, {
+      method: "PATCH",
+      body: JSON.stringify({ status }),
+    });
+  },
+
+  async decideInterview(interviewId, decision) {
+    return apiRequest(`/interviews/${encodeURIComponent(interviewId)}/decision`, {
+      method: "PATCH",
+      body: JSON.stringify({ decision }),
+    });
+  },
+
   /* ================= SAVED JOBS ================= */
 
   /**
@@ -395,6 +462,11 @@ window.DB = {
       console.error("DB: toggleSaveJob error", error);
       throw error;
     }
+  },
+
+  async removeSavedJob(jobId) {
+    if (!jobId) throw new Error("Mã công việc không hợp lệ");
+    return apiRequest(`/saved-jobs/${encodeURIComponent(jobId)}`, { method: "DELETE" });
   },
 
   /* ================= COMPANIES ================= */

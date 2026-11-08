@@ -128,8 +128,8 @@
         
         try {
           const allApps = await window.DB.getApplicationsByJob(jobId);
-          // Show apps that are applied or scheduled for interview
-          const apps = allApps.filter(a => ['applied', 'interview_scheduled'].includes(a.status));
+          // Keep terminal states visible so changing a stage never makes a candidate disappear.
+          const apps = allApps;
           
           if (!apps.length) { 
             appListContainer.innerHTML = `
@@ -143,10 +143,18 @@
           
           const statusMap = { 
             applied: ['<i class="fa-solid fa-envelope"></i> Mới ứng tuyển', 'badge-info'],
-            interview_scheduled: ['<i class="fa-solid fa-calendar-check"></i> Đang phỏng vấn', 'badge-warning'],
-            accepted: ['<i class="fa-solid fa-circle-check"></i> Trúng tuyển', 'badge-success'],
-            rejected: ['<i class="fa-solid fa-circle-xmark"></i> Từ chối', 'badge-danger'],
-            failed: ['<i class="fa-solid fa-user-xmark"></i> Không đạt', 'badge-dark']
+            reviewing: ['<i class="fa-solid fa-magnifying-glass"></i> Đang xem xét', 'badge-warning'],
+            interview_invited: ['<i class="fa-solid fa-calendar-check"></i> Mời phỏng vấn', 'badge-warning'],
+            interviewed: ['<i class="fa-solid fa-user-check"></i> Đã phỏng vấn', 'badge-info'],
+            offered: ['<i class="fa-solid fa-file-signature"></i> Đã gửi offer', 'badge-info'],
+            offer_accepted: ['<i class="fa-solid fa-circle-check"></i> Đã đồng ý offer', 'badge-success'],
+            hired: ['<i class="fa-solid fa-briefcase"></i> Đã nhận việc', 'badge-success'],
+            employment_ended: ['<i class="fa-solid fa-circle-minus"></i> Đã kết thúc hợp tác', 'badge-neutral'],
+            offer_declined: ['<i class="fa-solid fa-circle-xmark"></i> Ứng viên từ chối offer', 'badge-dark'],
+            withdrawn: ['<i class="fa-solid fa-arrow-rotate-left"></i> Ứng viên rút hồ sơ', 'badge-neutral'],
+      accepted: ['<i class="fa-solid fa-circle-check"></i> Đậu phỏng vấn', 'badge-success'],
+            rejected: ['<i class="fa-solid fa-circle-xmark"></i> Không đạt', 'badge-danger'],
+            failed: ['<i class="fa-solid fa-circle-xmark"></i> Không đạt', 'badge-danger']
           };
 
           const rows = [];
@@ -169,13 +177,19 @@
                 </div>
                 <div class="cv-content-box" style="margin: 16px 0; padding: 12px; background: var(--bg); border-radius: 8px; border: 1px solid var(--border-light);">
                   <strong class="cv-label" style="display:block; margin-bottom:4px; font-size:0.9rem;"><i class="fa-solid fa-file-lines"></i> Nội dung giới thiệu / CV (văn bản):</strong>
-                  <div class="cv-text" style="white-space: pre-wrap; font-size: 0.95rem;">${escapeHtml(a.cv || 'Không có giới thiệu.')}</div>
+                  <div class="cv-text" style="white-space: pre-wrap; font-size: 0.95rem;">${escapeHtml(a.cv || 'Không có nội dung giới thiệu dạng văn bản.')}</div>
+                  ${a.cvDownloadUrl ? `<a class="btn btn-sm btn-outline" href="${a.cvDownloadUrl}"><i class="fa-solid fa-download"></i> Tải CV: ${escapeHtml(a.cvFileName || a.cvTitle || "CV đính kèm")}</a>` : ""}
                 </div>
                 <div class="flex" style="gap:8px" id="actions_${a.id}">
                   <button onclick="window.App.openChat('${a.applicantId || a.candidateId}')" class="btn btn-sm btn-info"><i class="fa-solid fa-comments"></i> Nhắn tin</button>
-                  ${a.status === 'applied' ? `
+                  ${['applied', 'reviewing'].includes(a.status) ? `
                       <button class="btn btn-sm btn-primary" onclick="window.showInterviewForm('${a.id}')"><i class="fa-solid fa-calendar-plus"></i> Đặt lịch phỏng vấn</button>
                       <button class="btn btn-sm btn-outline-danger" onclick="window.updateStatus('${a.id}','rejected')"><i class="fa-solid fa-xmark"></i> Từ chối</button>
+                  ` : a.status === 'interview_invited' ? `
+                      <button class="btn btn-sm btn-primary" onclick="window.showInterviewForm('${a.id}')"><i class="fa-solid fa-calendar-plus"></i> Cập nhật lịch phỏng vấn</button>
+                      <button class="btn btn-sm btn-outline-danger" onclick="window.updateStatus('${a.id}','rejected')"><i class="fa-solid fa-xmark"></i> Từ chối</button>
+                  ` : a.status === 'interviewed' ? `
+                      <a class="btn btn-sm btn-light" href="interviews.html">Mở lịch phỏng vấn để quyết định</a>
                   ` : `<span style="font-size:.85rem;color:var(--text-light)">Trạng thái: <strong>${label}</strong></span>`}
                 </div>
                 <div id="interviewFormContainer_${a.id}" class="interview-form-inline" style="display:none; margin-top:16px; padding:16px; background:var(--bg-light); border-radius:8px;"></div>

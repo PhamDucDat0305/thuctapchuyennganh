@@ -35,28 +35,25 @@ router.post('/', requireRole('employer'), asyncHandler(async (req, res) => {
     .query(`SELECT id FROM dbo.users WHERE id = @candidateId AND role = N'candidate' AND status = N'active'`);
   if (!candidate.recordset.length) return res.status(404).json({ error: 'Không tìm thấy ứng viên đang hoạt động' });
 
-  await pool.request()
+  const result = await pool.request()
     .input('employerId', sql.BigInt, req.user.id)
     .input('candidateId', sql.BigInt, candidateId)
     .query(`
       SET XACT_ABORT ON;
-      DECLARE @today DATE = CONVERT(date, SYSUTCDATETIME());
+      DECLARE @recorded BIT = 0;
       BEGIN TRANSACTION;
-      IF EXISTS (
+      IF NOT EXISTS (
         SELECT 1 FROM dbo.profile_views WITH (UPDLOCK, HOLDLOCK)
-        WHERE employer_id = @employerId AND candidate_id = @candidateId AND viewed_on = @today
+        WHERE employer_id = @employerId AND candidate_id = @candidateId
       )
       BEGIN
-        UPDATE dbo.profile_views SET viewed_at = SYSUTCDATETIME()
-        WHERE employer_id = @employerId AND candidate_id = @candidateId AND viewed_on = @today;
-      END
-      ELSE
-      BEGIN
-        INSERT INTO dbo.profile_views (employer_id, candidate_id, viewed_on)
-        VALUES (@employerId, @candidateId, @today);
+        INSERT INTO dbo.profile_views (employer_id, candidate_id)
+        VALUES (@employerId, @candidateId);
+        SET @recorded = 1;
       END;
-      COMMIT TRANSACTION;`);
-  return res.json({ recorded: true });
+      COMMIT TRANSACTION;
+      SELECT @recorded AS recorded;`);
+  return res.json({ recorded: Boolean(result.recordset[0]?.recorded), countedOnce: true });
 }));
 
 module.exports = router;

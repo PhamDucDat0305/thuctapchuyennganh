@@ -110,6 +110,7 @@
     <script type="module" src="js/app.js"></script>
     <script src="js/navbar.js"></script>
     <script type="module">
+      import { apiRequest } from "./js/api.js";
       document.addEventListener("DOMContentLoaded", async () => {
         const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({
           "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
@@ -137,6 +138,19 @@
 
         // Tăng lượt xem (chỉ tăng nếu người xem không phải chủ sở hữu tin)
         const currentUser = window.Auth.getCurrentUser();
+        let alreadyApplied = false;
+        let blockedByActiveEmployment = false;
+        let activeEmploymentCompany = "";
+        if (currentUser?.role === "candidate") {
+          try {
+            const eligibility = await window.DB.getApplicationEligibility(jobId);
+            alreadyApplied = eligibility.hasApplied;
+            blockedByActiveEmployment = eligibility.blockedByActiveEmployment;
+            activeEmploymentCompany = eligibility.companyName || job.companyName || "công ty này";
+          } catch (error) {
+            console.warn("Không kiểm tra được trạng thái ứng tuyển:", error);
+          }
+        }
         if (!currentUser || currentUser.id !== job.createdBy) {
           await window.DB.incrementJobViews(jobId);
         }
@@ -161,7 +175,7 @@
             <div class="detail-fact"><span class="detail-fact-icon"><i class="fa-regular fa-calendar"></i></span><span><small>Hạn ứng tuyển</small><strong>${escapeHtml(deadline)}</strong></span></div>
           </div>
           ${currentUser?.role === "employer" ? "" : `<div class="detail-actions">
-            <button class="detail-apply-btn" onclick="applyJob('${job.id}')"><i class="fa-solid fa-paper-plane"></i> Ứng tuyển ngay</button>
+            ${alreadyApplied ? `<span class="detail-applied-label" aria-label="Bạn đã ứng tuyển tin này"><i class="fa-solid fa-circle-check"></i> Đã ứng tuyển</span>` : blockedByActiveEmployment ? `<span class="detail-applied-label" title="Bạn đang hợp tác với ${escapeHtml(activeEmploymentCompany)}"><i class="fa-solid fa-handshake"></i> Đang hợp tác với công ty này</span>` : `<button class="detail-apply-btn" onclick="applyJob('${job.id}')"><i class="fa-solid fa-paper-plane"></i> Ứng tuyển ngay</button>`}
             <button id="saveBtn" class="detail-save-btn" onclick="toggleSave('${job.id}')"><i class="fa-regular fa-heart"></i> Lưu tin</button>
           </div>`}
         </section>
@@ -186,7 +200,50 @@
         </section>
 
         ${job.benefits ? `<section class="detail-card detail-section"><h2 class="detail-section-title">Quyền lợi ứng viên</h2><div class="detail-copy">${escapeHtml(job.benefits).replace(/\r?\n/g, "<br>")}</div></section>` : ""}
+        ${currentUser?.role === "candidate" ? `<section class="job-report-notice">Báo cáo tin tuyển dụng: Nếu bạn thấy rằng tin tuyển dụng này không đúng hoặc có dấu hiệu lừa đảo, hãy <button type="button" id="openJobReport">phản ánh với chúng tôi</button>.</section>
+          <div class="job-report-overlay" id="jobReportOverlay" hidden>
+            <section class="job-report-modal" role="dialog" aria-modal="true" aria-labelledby="jobReportHeading">
+              <button type="button" class="job-report-close-icon" id="closeJobReportIcon" aria-label="Đóng">&times;</button>
+              <h2 id="jobReportHeading">Phản ánh tin tuyển dụng</h2>
+              <p class="job-report-job-title">Tin được phản ánh: <strong>${escapeHtml(job.title)}</strong></p>
+              <form id="jobReportForm">
+                <label>Họ và tên<input name="fullName" maxlength="150" value="${escapeHtml(currentUser.fullName || "")}" required></label>
+                <label>Số điện thoại<input name="phone" type="tel" maxlength="30" value="${escapeHtml(currentUser.phone || "")}" required></label>
+                <label>Địa chỉ<input name="address" maxlength="300" required></label>
+                <label>Địa chỉ email<input name="email" type="email" maxlength="255" value="${escapeHtml(currentUser.email || "")}" required></label>
+                <label>Nội dung<textarea name="content" rows="5" maxlength="4000" required placeholder="Mô tả lý do bạn phản ánh tin tuyển dụng này"></textarea></label>
+                <div class="job-report-actions"><button type="submit" class="job-report-submit">Gửi</button><button type="button" id="closeJobReport" class="job-report-cancel">Đóng</button></div>
+                <p id="jobReportError" class="job-report-error" role="status"></p>
+              </form>
+            </section>
+          </div>` : ""}
       `;
+
+        const reportOverlay = document.getElementById("jobReportOverlay");
+        const closeReport = () => { if (reportOverlay) reportOverlay.hidden = true; };
+        document.getElementById("openJobReport")?.addEventListener("click", () => { reportOverlay.hidden = false; });
+        document.getElementById("closeJobReport")?.addEventListener("click", closeReport);
+        document.getElementById("closeJobReportIcon")?.addEventListener("click", closeReport);
+        reportOverlay?.addEventListener("click", (event) => { if (event.target === reportOverlay) closeReport(); });
+        document.getElementById("jobReportForm")?.addEventListener("submit", async (event) => {
+          event.preventDefault();
+          const form = event.currentTarget;
+          const submit = form.querySelector('[type="submit"]');
+          const errorBox = document.getElementById("jobReportError");
+          submit.disabled = true;
+          errorBox.textContent = "";
+          try {
+            const data = Object.fromEntries(new FormData(form).entries());
+            await apiRequest("/job-reports", { method: "POST", body: JSON.stringify({ ...data, jobId }) });
+            reportOverlay.hidden = true;
+            form.reset();
+            Toast.success("Đã gửi phản ánh đến quản trị viên.");
+          } catch (error) {
+            errorBox.textContent = error.message || "Không gửi được phản ánh. Vui lòng thử lại.";
+          } finally {
+            submit.disabled = false;
+          }
+        });
 
         // Kiểm tra trạng thái lưu
         await window.updateSaveButton(jobId);

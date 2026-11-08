@@ -127,7 +127,7 @@
 
           const allApps = await window.DB.getApplications();
           const acceptedApps = allApps.filter(
-            (a) => myJobIds.has(a.jobId) && a.status === "accepted",
+            (a) => myJobIds.has(a.jobId) && ["hired", "accepted"].includes(a.status),
           );
 
           if (!acceptedApps.length) {
@@ -166,8 +166,7 @@
               <div class="flex-between" style="margin-top: auto; padding-top: 16px; border-top: 1px solid var(--border-light);">
                 <span class="badge badge-success"><i class="fa-solid fa-check-double"></i> Đã trúng tuyển</span>
                 <div class="flex" style="gap: 8px;">
-                  <button class="btn btn-sm btn-ghost text-danger" onclick="cancelCollab('${a.id}')" title="Hủy hợp tác"><i class="fa-solid fa-trash-can"></i></button>
-                  <button class="btn btn-sm btn-outline" onclick="Toast.success('Đã gửi thông báo chúc mừng tới ứng viên!')">Gửi thông báo</button>
+                  <button class="btn btn-sm btn-ghost text-danger" onclick="cancelCollab('${a.id}')" title="Kết thúc hợp tác" aria-label="Kết thúc hợp tác"><i class="fa-solid fa-link-slash"></i></button>
                 </div>
               </div>
             </div>
@@ -182,9 +181,13 @@
 
       async function cancelCollab(appId) {
         if (!confirm("Bạn có chắc chắn muốn hủy hợp tác với ứng viên này?")) return;
-        await window.DB.updateApplication(appId, { status: "rejected" });
-        Toast.success("Đã hủy hợp tác với ứng viên.");
-        render();
+        try {
+          await window.DB.updateApplication(appId, { status: "employment_ended" });
+          Toast.success("Đã cập nhật trạng thái kết thúc hợp tác.");
+          render();
+        } catch (error) {
+          Toast.error(error.message || "Không thể cập nhật trạng thái hợp tác.");
+        }
       }
       
       window.cancelCollab = cancelCollab;

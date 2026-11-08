@@ -119,62 +119,6 @@
           </div>
         </div>
 
-        <div class="card mt-3 animate-fade-up" style="animation-delay: 0.4s">
-          <h3 class="mb-2">Chi phí và Thời gian</h3>
-          <div class="grid grid-2">
-            <div
-              style="
-                padding: 20px;
-                background: var(--bg);
-                border-radius: var(--radius);
-              "
-            >
-              <h4 style="margin-bottom: 10px; color: var(--text-light)">
-                <i class="fa-solid fa-stopwatch"></i> Thời gian tuyển dụng trung
-                bình
-              </h4>
-              <div
-                style="font-size: 2rem; font-weight: 800; color: var(--primary)"
-              >
-                14.5 ngày
-              </div>
-              <p
-                style="
-                  font-size: 0.85rem;
-                  color: var(--text-light);
-                  margin-top: 5px;
-                "
-              >
-                Nhanh hơn 12% so với tháng trước
-              </p>
-            </div>
-            <div
-              style="
-                padding: 20px;
-                background: var(--bg);
-                border-radius: var(--radius);
-              "
-            >
-              <h4 style="margin-bottom: 10px; color: var(--text-light)">
-                <i class="fa-solid fa-money-bill-wave"></i> Chi phí trên một CV
-              </h4>
-              <div
-                style="font-size: 2rem; font-weight: 800; color: var(--primary)"
-              >
-                25,000đ
-              </div>
-              <p
-                style="
-                  font-size: 0.85rem;
-                  color: var(--text-light);
-                  margin-top: 5px;
-                "
-              >
-                Ổn định
-              </p>
-            </div>
-          </div>
-        </div>
       </main>
     </div>
     <script type="module" src="../js/db.js"></script>
@@ -187,16 +131,14 @@
       if (!user) throw "redirect";
       window.App.renderSidebar("employer", "stats_performance");
 
-      const myJobs = DB.getJobsByEmployer(user.id);
-      const allApps = myJobs.flatMap((j) => DB.getApplicationsByJob(j.id));
+      const myJobs = await DB.getJobsByEmployer(user.id);
+      const appGroups = await Promise.all(myJobs.map((job) => DB.getApplicationsByJob(job.id)));
+      const allApps = appGroups.flat();
 
       document.getElementById("s_applied").textContent = allApps.length;
-      // Giả lập tỉ lệ rớt phễu
-      document.getElementById("s_interview").textContent = Math.floor(
-        allApps.length * 0.4,
-      );
+      document.getElementById("s_interview").textContent = allApps.filter((app) => ["interview_invited", "interviewed"].includes(app.status)).length;
       document.getElementById("s_hired").textContent = allApps.filter(
-        (a) => a.status === "accepted",
+        (a) => ["hired", "accepted"].includes(a.status),
       ).length;
     </script>
   </body>

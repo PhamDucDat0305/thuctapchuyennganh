@@ -78,7 +78,7 @@ const BadgeNotifier = {
         const apps = await window.DB.getApplications();
         return apps.filter(a => 
           jobIds.has(a.jobId) && 
-          a.status === "interview_scheduled" && 
+          ["interview_invited", "interview_scheduled"].includes(a.status) &&
           new Date(a.updatedAt || a.appliedAt) > lastSeen
         ).length;
       } catch (e) { return 0; }
@@ -87,7 +87,7 @@ const BadgeNotifier = {
       try {
         const lastSeen = BadgeNotifier.getLastSeen(userId, "cand_apps");
         const apps = await window.DB.getApplicationsByCandidate(userId);
-        const statusChange = ["interview_scheduled", "accepted", "rejected", "failed"];
+        const statusChange = ["interview_invited", "interviewed", "offered", "offer_accepted", "offer_declined", "hired", "rejected", "withdrawn", "interview_scheduled", "accepted", "failed"];
         return apps.filter(a => 
           statusChange.includes(a.status) && 
           new Date(a.updatedAt || a.appliedAt) > lastSeen
@@ -185,6 +185,16 @@ window.App = {
     const sidebar = document.getElementById("sidebar");
     if (!sidebar || !user) return;
 
+    let companyLogo = "";
+    if (role === "employer" && window.DB?.getCompanyByEmployer) {
+      try {
+        const company = await window.DB.getCompanyByEmployer(user.id);
+        companyLogo = company?.logoUrl || company?.logo || "";
+      } catch (error) {
+        console.warn("Sidebar: không tải được logo công ty", error);
+      }
+    }
+
     const initials = user.fullName
       ? user.fullName.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase()
       : "U";
@@ -225,6 +235,17 @@ window.App = {
         </div>
       </div>
     `;
+
+    if (companyLogo) {
+      const avatar = sidebar.querySelector(".sidebar-user .avatar");
+      if (avatar) {
+        const image = document.createElement("img");
+        image.src = companyLogo;
+        image.alt = "Logo công ty";
+        image.onerror = () => image.remove();
+        avatar.replaceChildren(image);
+      }
+    }
 
     if (role !== "admin") BadgeNotifier.startPolling(user.id, role);
     this._ensureSidebarOverlay();
@@ -363,7 +384,11 @@ window.App = {
       if (!link || event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
       if (link.target && link.target !== "_self") return;
 
-      const url = new URL(link.href, window.location.href);
+      // Sidebar hrefs are relative (for example `dashboard.html`). Resolve
+      // them from the role folder, not the current URL: the content iframe may
+      // currently be showing a root page such as job-detail.html.
+      const href = link.getAttribute("href") || "";
+      const url = new URL(href, `${window.location.origin}${roleRoot}`);
       if (url.origin !== window.location.origin || !url.pathname.startsWith(roleRoot)) return;
       event.preventDefault();
       navigate(url);
@@ -418,14 +443,16 @@ window.App = {
       <div class="menu-label">Quản lý công ty</div>
       ${link("company-profile.html", "company", "fa-building", "Hồ sơ công ty", "text-teal")}
       ${link("edit-company.html", "edit_company", "fa-pen-to-square", "Chỉnh sửa thông tin", "text-primary")}
+      <!-- Tạm ẩn cho đến khi hoàn thiện chức năng báo cáo và thống kê.
       <div class="menu-label">Báo cáo & thống kê</div>
       ${link("stats-views.html", "stats_views", "fa-eye", "Lượt xem tin", "text-warning")}
       ${link("stats-performance.html", "stats_performance", "fa-chart-simple", "Hiệu quả tuyển dụng", "text-success")}
+      -->
       ${link("messages.html", "messages", "fa-comments", "Tin nhắn", "text-primary")}
       <div class="menu-label">Cá nhân & Bảo mật</div>
       ${link("account.html", "account", "fa-user", "Thông tin tài khoản", "text-primary")}
       ${link("password.html", "password", "fa-key", "Đổi mật khẩu", "text-warning")}
-      ${link("security.html", "security", "fa-shield-halved", "Cài đặt bảo mật", "text-danger")}
+      <!-- ${link("security.html", "security", "fa-shield-halved", "Cài đặt bảo mật", "text-danger")} -->
     `;
   },
 
@@ -767,6 +794,12 @@ window.App = {
   },
 
   async openChat(contactId) {
+    // Dashboard pages render inside the content iframe, while the single chat
+    // widget belongs to the outer page. Delegate iframe clicks to that widget.
+    if (window.self !== window.top) {
+      return window.top.App.openChat(contactId);
+    }
+
     const user = Auth.getCurrentUser();
     const widget = document.getElementById("chatWidget");
     if (!widget || !user) return;

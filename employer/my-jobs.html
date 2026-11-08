@@ -132,8 +132,9 @@
           for (const j of jobs) {
             const apps = await window.DB.getApplicationsByJob(j.id);
             const appCount = apps.length;
+            const adminClosed = j.adminVisibility === 'hidden';
             rows.push(`<tr>
-              <td data-label="Tiêu đề"><strong>${escapeHtml(j.title)}</strong><br><span class="badge badge-neutral" style="margin-top:4px">${escapeHtml(j.type)}</span> <span class="badge ${j.status === 'active' ? 'badge-primary' : 'badge-neutral'}">${escapeHtml(j.status)}</span></td>
+              <td data-label="Tiêu đề"><strong>${escapeHtml(j.title)}</strong><br><span class="badge badge-neutral" style="margin-top:4px">${escapeHtml(j.type)}</span> <span class="badge ${j.status === 'active' && !adminClosed ? 'badge-primary' : 'badge-neutral'}" ${adminClosed ? 'title="Tin đang bị Admin ẩn khỏi danh sách công khai"' : ''}>${adminClosed ? 'Đã đóng' : escapeHtml(j.status)}</span></td>
               <td data-label="Lương">${escapeHtml(j.salary)}</td>
               <td data-label="Địa điểm">${escapeHtml(j.location)}</td>
               <td data-label="Ứng viên"><a href="job-applicants.html?id=${j.id}" class="badge badge-info" style="cursor:pointer">${appCount} CV</a></td>
@@ -142,7 +143,7 @@
               <td data-label="Thao tác"><div class="flex" style="gap:6px">
                 <a href="edit-job.html?id=${j.id}" class="btn btn-sm btn-secondary"><i class="fa-solid fa-pen-to-square"></i></a>
                 <a href="job-applicants.html?id=${j.id}" class="btn btn-sm btn-primary"><i class="fa-solid fa-users"></i></a>
-                ${j.status === 'active' ? `<button class="btn btn-sm btn-danger" onclick="deleteJob('${j.id}')" title="Đóng tin"><i class="fa-solid fa-ban"></i></button>` : '<span>Đã đóng</span>'}
+                ${j.status === 'active' && !adminClosed ? `<button class="btn btn-sm btn-danger" onclick="deleteJob('${j.id}')" title="Đóng tin"><i class="fa-solid fa-ban"></i></button>` : '<span>Đã đóng</span>'}
               </div></td>
             </tr>`);
           }

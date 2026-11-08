@@ -95,12 +95,6 @@
             <h1><i class="fa-solid fa-calendar-days"></i> Lịch phỏng vấn</h1>
             <p>Quản lý các buổi phỏng vấn sắp tới</p>
           </div>
-          <button
-            class="btn btn-primary"
-            onclick="Toast.info('Chức năng đang phát triển')"
-          >
-            + Lên lịch mới
-          </button>
         </div>
 
         <div class="card animate-fade-up">
@@ -142,10 +136,18 @@
           const myJobIds = myJobs.map((j) => j.id);
           const allApps = await window.DB.getApplications();
           const filteredApps = allApps.filter(
-            (a) =>
-              myJobIds.includes(a.jobId) && a.status === "interview_scheduled",
+            (a) => myJobIds.includes(a.jobId) && a.status === "interview_invited"
+              && ["scheduled", "confirmed"].includes(a.interviewStatus),
           );
           const allInterviews = await window.DB.getInterviews();
+          const interviewByApplication = new Map(
+            allInterviews.map((interview) => [String(interview.applicationId), interview]),
+          );
+          filteredApps.sort((a, b) => {
+            const aTime = new Date(interviewByApplication.get(String(a.id))?.createdAt || a.appliedAt || 0).getTime();
+            const bTime = new Date(interviewByApplication.get(String(b.id))?.createdAt || b.appliedAt || 0).getTime();
+            return bTime - aTime;
+          });
 
           const container = document.getElementById("interviewList");
           if (!filteredApps.length) {
@@ -157,9 +159,7 @@
           const rows = [];
           for (const a of filteredApps) {
               const job = await window.DB.getJobById(a.jobId);
-              const interview = allInterviews.find(
-                (i) => i.applicationId === a.id,
-              );
+              const interview = interviewByApplication.get(String(a.id));
               const timeStr = interview
                 ? `${interview.date} · ${interview.time}`
                 : "Chưa cập nhật";
@@ -173,8 +173,9 @@
               <td data-label="Hành động">
                 <div class="flex" style="gap:8px">
                   <button onclick="window.App.openChat('${a.applicantId || a.candidateId}')" class="btn btn-xs btn-info" title="Nhắn tin"><i class="fa-solid fa-comments"></i></button>
-                  <button class="btn btn-xs btn-success" onclick="window.updateResult('${a.id}', 'accepted')"><i class="fa-solid fa-check"></i> Đậu</button>
-                  <button class="btn btn-xs btn-danger" onclick="window.updateResult('${a.id}', 'failed')"><i class="fa-solid fa-xmark"></i> Không đạt</button>
+                  <span class="badge badge-warning">${({scheduled:"Chờ xác nhận",confirmed:"Đã xác nhận"})[interview?.status] || "Đã mời"}</span>
+                  ${interview && ["scheduled", "confirmed"].includes(interview.status) ? `<button class="btn btn-xs btn-success" onclick="window.decideInterview('${interview.id}','accepted')"><i class="fa-solid fa-check"></i> Đậu</button>` : ""}
+                  ${interview && ["scheduled", "confirmed"].includes(interview.status) ? `<button class="btn btn-xs btn-danger" onclick="window.decideInterview('${interview.id}','rejected')"><i class="fa-solid fa-xmark"></i> Không đạt</button>` : ""}
                 </div>
               </td>
             </tr>
@@ -183,20 +184,16 @@
           container.innerHTML = rows.join("");
         }
 
-        window.updateResult = async function(appId, status) {
-          if (
-            !confirm(
-              `Xác nhận ứng viên này ${status === "accepted" ? "ĐẬU" : "KHÔNG ĐẠT"} phỏng vấn?`,
-            )
-          )
-            return;
-          await window.DB.updateApplication(appId, { status });
-          Toast.success(
-            status === "accepted"
-              ? "Chúc mừng! Ứng viên đã trúng tuyển."
-              : "Đã cập nhật trạng thái phỏng vấn.",
-          );
-          window.render();
+        window.decideInterview = async function(id, decision) {
+          const label = decision === "accepted" ? "ĐẬU" : "KHÔNG ĐẠT";
+          if (!confirm(`Xác nhận kết quả phỏng vấn: ${label}?`)) return;
+          try {
+            await window.DB.decideInterview(id, decision);
+            Toast.success(decision === "accepted" ? "Đã đánh dấu ứng viên đậu phỏng vấn." : "Đã đánh dấu ứng viên không đạt.");
+            window.render();
+          } catch (error) {
+            Toast.error(error.message || "Không cập nhật được kết quả phỏng vấn.");
+          }
         }
 
         window.render();

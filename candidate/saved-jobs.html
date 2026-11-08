@@ -163,9 +163,11 @@
         }
 
         window.toggleSave = async function(jobId) {
-          await window.DB.toggleSaveJob(user.id, jobId);
-          renderSaved();
-          Toast.info("Đã bỏ lưu việc làm");
+          try {
+            await window.DB.removeSavedJob(jobId);
+            await renderSaved();
+            Toast.info("Đã bỏ lưu việc làm");
+          } catch (error) { Toast.error(error.message || "Không bỏ lưu được việc làm."); }
         };
 
         renderSaved();

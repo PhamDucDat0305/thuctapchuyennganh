@@ -1,28 +1,42 @@
-const express = require('express');
-const argon2 = require('argon2');
-const crypto = require('node:crypto');
-const { sql, getPool } = require('../config/database');
-const { SESSION_COOKIE_NAME } = require('../config/session');
-const asyncHandler = require('../utils/asyncHandler');
-const authEmailRoutes = require('./auth-email.routes');
-const rateLimit = require('../middleware/rateLimit');
-const { regenerateSession, saveSession, destroySession } = require('../utils/sessionHelpers');
+const express = require("express");
+const argon2 = require("argon2");
+const crypto = require("node:crypto");
+const { sql, getPool } = require("../config/database");
+const { SESSION_COOKIE_NAME } = require("../config/session");
+const asyncHandler = require("../utils/asyncHandler");
+const authEmailRoutes = require("./auth-email.routes");
+const rateLimit = require("../middleware/rateLimit");
+const {
+  regenerateSession,
+  saveSession,
+  destroySession,
+} = require("../utils/sessionHelpers");
 
 const router = express.Router();
-router.use('/email', authEmailRoutes);
-const limitRegister = rateLimit({ windowMs: 60 * 60 * 1000, max: 5, message: 'Bạn đã đăng ký quá nhiều lần. Vui lòng thử lại sau.' });
-const limitLogin = rateLimit({ windowMs: 15 * 60 * 1000, max: 10, message: 'Bạn đã thử đăng nhập quá nhiều lần. Vui lòng thử lại sau.' });
+router.use("/email", authEmailRoutes);
+const limitRegister = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 5,
+  message: "Bạn đã đăng ký quá nhiều lần. Vui lòng thử lại sau.",
+});
+const limitLogin = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: "Bạn đã thử đăng nhập quá nhiều lần. Vui lòng thử lại sau.",
+});
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const PUBLIC_ROLES = ['candidate', 'employer']; // không bao giờ nhận 'admin' từ người dùng
+const PUBLIC_ROLES = ["candidate", "employer"]; // không bao giờ nhận 'admin' từ người dùng
 
-const str = (v) => (typeof v === 'string' ? v.trim() : '');
+const str = (v) => (typeof v === "string" ? v.trim() : "");
 
 // Băm giả để thời gian phản hồi giống nhau khi email không tồn tại.
 let dummyHashPromise = null;
 function getDummyHash() {
   if (!dummyHashPromise) {
-    dummyHashPromise = argon2.hash('dummy-password-for-timing', { type: argon2.argon2id });
+    dummyHashPromise = argon2.hash("dummy-password-for-timing", {
+      type: argon2.argon2id,
+    });
   }
   return dummyHashPromise;
 }
@@ -43,57 +57,75 @@ async function startSession(req, userId) {
 }
 
 /* ---------------------------- Đăng ký ---------------------------- */
-router.post('/register', limitRegister, asyncHandler(async (req, res) => {
-  const body = req.body || {};
-  const email = str(body.email).toLowerCase();
-  const password = typeof body.password === 'string' ? body.password : '';
-  const verificationToken = str(body.verificationToken);
-  const fullName = str(body.fullName);
-  const role = str(body.role);
-  const phone = str(body.phone);
-  const companyName = str(body.companyName);
+router.post(
+  "/register",
+  limitRegister,
+  asyncHandler(async (req, res) => {
+    const body = req.body || {};
+    const email = str(body.email).toLowerCase();
+    const password = typeof body.password === "string" ? body.password : "";
+    const verificationToken = str(body.verificationToken);
+    const fullName = str(body.fullName);
+    const role = str(body.role);
+    const phone = str(body.phone);
+    const companyName = str(body.companyName);
 
-  if (!EMAIL_RE.test(email) || email.length > 255) {
-    return res.status(400).json({ error: 'Email không hợp lệ' });
-  }
-  if (!verificationToken || verificationToken.length > 200) {
-    return res.status(400).json({ error: 'Hãy xác minh email trước khi đăng ký' });
-  }
-  if (password.length < 8 || password.length > 128) {
-    return res.status(400).json({ error: 'Mật khẩu phải từ 8 đến 128 ký tự' });
-  }
-  if (!fullName || fullName.length > 150) {
-    return res.status(400).json({ error: 'Họ tên là bắt buộc (tối đa 150 ký tự)' });
-  }
-  if (!PUBLIC_ROLES.includes(role)) {
-    return res.status(400).json({ error: 'Vai trò phải là candidate hoặc employer' });
-  }
-  if (phone.length > 20) {
-    return res.status(400).json({ error: 'Số điện thoại quá dài (tối đa 20 ký tự)' });
-  }
-  if (role === 'employer' && (!companyName || companyName.length > 200)) {
-    return res.status(400).json({ error: 'Nhà tuyển dụng cần nhập tên công ty (tối đa 200 ký tự)' });
-  }
+    if (!EMAIL_RE.test(email) || email.length > 255) {
+      return res.status(400).json({ error: "Email không hợp lệ" });
+    }
+    if (!verificationToken || verificationToken.length > 200) {
+      return res
+        .status(400)
+        .json({ error: "Hãy xác minh email trước khi đăng ký" });
+    }
+    if (password.length < 8 || password.length > 128) {
+      return res
+        .status(400)
+        .json({ error: "Mật khẩu phải từ 8 đến 128 ký tự" });
+    }
+    if (!fullName || fullName.length > 150) {
+      return res
+        .status(400)
+        .json({ error: "Họ tên là bắt buộc (tối đa 150 ký tự)" });
+    }
+    if (!PUBLIC_ROLES.includes(role)) {
+      return res
+        .status(400)
+        .json({ error: "Vai trò phải là candidate hoặc employer" });
+    }
+    if (phone.length > 10) {
+      return res
+        .status(400)
+        .json({ error: "Số điện thoại quá dài (tối đa 10 ký tự)" });
+    }
+    if (role === "employer" && (!companyName || companyName.length > 200)) {
+      return res.status(400).json({
+        error: "Nhà tuyển dụng cần nhập tên công ty (tối đa 200 ký tự)",
+      });
+    }
 
-  const pool = getPool();
-  const existing = await pool.request()
-    .input('email', sql.NVarChar(255), email)
-    .query('SELECT 1 AS found FROM dbo.users WHERE email = @email');
-  if (existing.recordset.length > 0) {
-    return res.status(409).json({ error: 'Email đã được đăng ký' });
-  }
+    const pool = getPool();
+    const existing = await pool
+      .request()
+      .input("email", sql.NVarChar(255), email)
+      .query("SELECT 1 AS found FROM dbo.users WHERE email = @email");
+    if (existing.recordset.length > 0) {
+      return res.status(409).json({ error: "Email đã được đăng ký" });
+    }
 
-  const hash = await argon2.hash(password, { type: argon2.argon2id });
+    const hash = await argon2.hash(password, { type: argon2.argon2id });
 
-  const tx = new sql.Transaction(pool);
-  await tx.begin();
-  let userId;
-  try {
-    const tokenHash = crypto.createHash('sha256').update(verificationToken).digest('hex');
-    const verification = await new sql.Request(tx)
-      .input('email', sql.NVarChar(255), email)
-      .input('tokenHash', sql.VarChar(64), tokenHash)
-      .query(`SELECT TOP (1) id
+    const tx = new sql.Transaction(pool);
+    await tx.begin();
+    let userId;
+    try {
+      const tokenHash = crypto
+        .createHash("sha256")
+        .update(verificationToken)
+        .digest("hex");
+      const verification = await new sql.Request(tx)
+        .input("email", sql.NVarChar(255), email)
+        .input("tokenHash", sql.VarChar(64), tokenHash).query(`SELECT TOP (1) id
               FROM dbo.email_verifications WITH (UPDLOCK, HOLDLOCK)
               WHERE email = @email
                 AND verification_token_hash = @tokenHash
@@ -101,96 +133,119 @@ router.post('/register', limitRegister, asyncHandler(async (req, res) => {
                 AND verification_expires_at > SYSUTCDATETIME()
                 AND consumed_at IS NULL
               ORDER BY id DESC`);
-    if (!verification.recordset.length) {
-      await tx.rollback();
-      return res.status(400).json({ error: 'Xác minh email đã hết hạn hoặc đã được sử dụng. Hãy xác minh lại.' });
-    }
-    const verificationId = verification.recordset[0].id;
+      if (!verification.recordset.length) {
+        await tx.rollback();
+        return res.status(400).json({
+          error:
+            "Xác minh email đã hết hạn hoặc đã được sử dụng. Hãy xác minh lại.",
+        });
+      }
+      const verificationId = verification.recordset[0].id;
 
-    const inserted = await new sql.Request(tx)
-      .input('email', sql.NVarChar(255), email)
-      .input('hash', sql.NVarChar(255), hash)
-      .input('fullName', sql.NVarChar(150), fullName)
-      .input('phone', sql.NVarChar(20), phone || null)
-      .input('role', sql.NVarChar(20), role)
-      .query(`INSERT INTO dbo.users (email, password_hash, full_name, phone, role)
+      const inserted = await new sql.Request(tx)
+        .input("email", sql.NVarChar(255), email)
+        .input("hash", sql.NVarChar(255), hash)
+        .input("fullName", sql.NVarChar(150), fullName)
+        .input("phone", sql.NVarChar(20), phone || null)
+        .input("role", sql.NVarChar(20), role)
+        .query(`INSERT INTO dbo.users (email, password_hash, full_name, phone, role)
               VALUES (@email, @hash, @fullName, @phone, @role);
               SELECT CAST(SCOPE_IDENTITY() AS BIGINT) AS id;`);
-    userId = inserted.recordset[0].id;
+      userId = inserted.recordset[0].id;
 
-    if (role === 'candidate') {
-      await new sql.Request(tx)
-        .input('id', sql.BigInt, userId)
-        .query('INSERT INTO dbo.candidate_profiles (user_id) VALUES (@id)');
-    } else {
-      await new sql.Request(tx)
-        .input('id', sql.BigInt, userId)
-        .input('name', sql.NVarChar(200), companyName)
-        .query('INSERT INTO dbo.companies (employer_id, name) VALUES (@id, @name)');
-    }
+      if (role === "candidate") {
+        await new sql.Request(tx)
+          .input("id", sql.BigInt, userId)
+          .query("INSERT INTO dbo.candidate_profiles (user_id) VALUES (@id)");
+      } else {
+        await new sql.Request(tx)
+          .input("id", sql.BigInt, userId)
+          .input("name", sql.NVarChar(200), companyName)
+          .query(
+            "INSERT INTO dbo.companies (employer_id, name) VALUES (@id, @name)",
+          );
+      }
 
-    const consumed = await new sql.Request(tx)
-      .input('id', sql.Int, verificationId)
-      .query(`UPDATE dbo.email_verifications
+      const consumed = await new sql.Request(tx).input(
+        "id",
+        sql.Int,
+        verificationId,
+      ).query(`UPDATE dbo.email_verifications
               SET consumed_at = SYSUTCDATETIME()
               WHERE id = @id AND consumed_at IS NULL`);
-    if (consumed.rowsAffected[0] !== 1) {
-      throw new Error('Không thể sử dụng token xác minh email');
+      if (consumed.rowsAffected[0] !== 1) {
+        throw new Error("Không thể sử dụng token xác minh email");
+      }
+      await tx.commit();
+    } catch (err) {
+      try {
+        await tx.rollback();
+      } catch (_) {
+        /* giao dịch đã đóng */
+      }
+      // 2627/2601: vi phạm UNIQUE (hai request đăng ký cùng email gần như đồng thời)
+      if (err.number === 2627 || err.number === 2601) {
+        return res.status(409).json({ error: "Email đã được đăng ký" });
+      }
+      throw err;
     }
-    await tx.commit();
-  } catch (err) {
-    try { await tx.rollback(); } catch (_) { /* giao dịch đã đóng */ }
-    // 2627/2601: vi phạm UNIQUE (hai request đăng ký cùng email gần như đồng thời)
-    if (err.number === 2627 || err.number === 2601) {
-      return res.status(409).json({ error: 'Email đã được đăng ký' });
-    }
-    throw err;
-  }
 
-  await startSession(req, userId);
-  res.status(201).json({ user: { id: Number(userId), email, fullName, role } });
-}));
+    await startSession(req, userId);
+    res
+      .status(201)
+      .json({ user: { id: Number(userId), email, fullName, role } });
+  }),
+);
 
 /* ---------------------------- Đăng nhập ---------------------------- */
-router.post('/login', limitLogin, asyncHandler(async (req, res) => {
-  const body = req.body || {};
-  const email = str(body.email).toLowerCase();
-  const password = typeof body.password === 'string' ? body.password : '';
+router.post(
+  "/login",
+  limitLogin,
+  asyncHandler(async (req, res) => {
+    const body = req.body || {};
+    const email = str(body.email).toLowerCase();
+    const password = typeof body.password === "string" ? body.password : "";
 
-  if (!email || !password || password.length > 128) {
-    return res.status(400).json({ error: 'Vui lòng nhập email và mật khẩu' });
-  }
+    if (!email || !password || password.length > 128) {
+      return res.status(400).json({ error: "Vui lòng nhập email và mật khẩu" });
+    }
 
-  const result = await getPool().request()
-    .input('email', sql.NVarChar(255), email)
-    .query(`SELECT id, email, password_hash, full_name, role, status
+    const result = await getPool()
+      .request()
+      .input("email", sql.NVarChar(255), email)
+      .query(`SELECT id, email, password_hash, full_name, role, status, admin_locked
             FROM dbo.users WHERE email = @email`);
-  const user = result.recordset[0];
+    const user = result.recordset[0];
 
-  const hashToCheck = user && user.password_hash ? user.password_hash : await getDummyHash();
-  let passwordOk = false;
-  try {
-    passwordOk = await argon2.verify(hashToCheck, password);
-  } catch (_) {
-    passwordOk = false;
-  }
+    const hashToCheck =
+      user && user.password_hash ? user.password_hash : await getDummyHash();
+    let passwordOk = false;
+    try {
+      passwordOk = await argon2.verify(hashToCheck, password);
+    } catch (_) {
+      passwordOk = false;
+    }
 
-  if (!user || !user.password_hash || !passwordOk) {
-    return res.status(401).json({ error: 'Email hoặc mật khẩu không đúng' });
-  }
-  if (user.status !== 'active') {
-    return res.status(403).json({ error: 'Tài khoản đã bị khóa' });
-  }
+    if (!user || !user.password_hash || !passwordOk) {
+      return res.status(401).json({ error: "Email hoặc mật khẩu không đúng" });
+    }
+    if (user.status !== "active" || user.admin_locked) {
+      return res.status(403).json({ error: "Tài khoản đã bị khóa" });
+    }
 
-  await startSession(req, user.id);
-  res.json({ user: publicUser(user) });
-}));
+    await startSession(req, user.id);
+    res.json({ user: publicUser(user) });
+  }),
+);
 
 /* ---------------------------- Đăng xuất ---------------------------- */
-router.post('/logout', asyncHandler(async (req, res) => {
-  await destroySession(req);
-  res.clearCookie(SESSION_COOKIE_NAME);
-  res.json({ ok: true });
-}));
+router.post(
+  "/logout",
+  asyncHandler(async (req, res) => {
+    await destroySession(req);
+    res.clearCookie(SESSION_COOKIE_NAME);
+    res.json({ ok: true });
+  }),
+);
 
 module.exports = router;

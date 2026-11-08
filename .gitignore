@@ -3,3 +3,4 @@ node_modules/
 *.log
 /employer/uploads/companies/
 /uploads/companies/
+/private_uploads/

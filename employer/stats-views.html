@@ -129,23 +129,24 @@
       if (!user) throw "redirect";
       window.App.renderSidebar("employer", "stats_views");
 
-      const myJobs = DB.getJobsByEmployer(user.id);
+      const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]);
+      const myJobs = await DB.getJobsByEmployer(user.id);
       let totalViews = 0;
       let totalApps = 0;
 
-      const rows = myJobs.map((j) => {
-        const v = j.views || Math.floor(Math.random() * 500) + 10; // Giả lập views nếu chưa có
-        const apps = DB.getApplicationsByJob(j.id).length;
+      const rows = await Promise.all(myJobs.map(async (j) => {
+        const v = Number(j.views) || 0;
+        const apps = (await DB.getApplicationsByJob(j.id)).length;
         totalViews += v;
         totalApps += apps;
         const rate = v > 0 ? ((apps / v) * 100).toFixed(1) : 0;
         return `<tr>
-        <td><strong>${j.title}</strong></td>
+        <td><strong>${escapeHtml(j.title)}</strong></td>
         <td>${v}</td>
         <td>${apps}</td>
         <td><span class="badge ${rate > 5 ? "badge-success" : "badge-warning"}">${rate}%</span></td>
       </tr>`;
-      });
+      }));
 
       document.getElementById("overviewStats").innerHTML = `
       <div class="stat-card"><div class="stat-icon orange"><i class="fa-solid fa-eye"></i></div><div class="stat-value">${totalViews}</div><div class="stat-label">Tổng lượt xem</div></div>

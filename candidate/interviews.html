@@ -118,7 +118,7 @@
 
       async function renderInterviews() {
         const apps = (await window.DB.getApplicationsByCandidate(user.id)).filter(
-          (a) => a.status === "interview_scheduled",
+          (a) => Boolean(a.interviewStatus),
         );
         
         const interviews = [];
@@ -136,10 +136,11 @@
           }
         }
 
-        interviews.sort(
-          (a, b) =>
-            new Date(a.date + " " + a.time) - new Date(b.date + " " + b.time),
-        );
+        interviews.sort((a, b) => {
+          const createdAtDiff = new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
+          if (createdAtDiff) return createdAtDiff;
+          return new Date(`${b.date} ${b.time}`) - new Date(`${a.date} ${a.time}`);
+        });
 
         const container = document.getElementById("interviewList");
 
@@ -169,8 +170,9 @@
                 </div>
               </div>
               <div class="flex-column" style="align-items: flex-end; gap: 10px;">
-                <span class="badge badge-warning">Sắp diễn ra</span>
+                <span class="badge badge-warning">${({scheduled:"Chờ xác nhận",confirmed:"Đã xác nhận",declined:"Đã từ chối",completed:"Đã phỏng vấn",canceled:"Đã hủy",no_show:"Ứng viên không đến"})[i.status] || i.status}</span>
                 <div class="flex" style="gap:8px">
+                  ${i.status === "scheduled" ? `<button class="btn btn-sm btn-primary" onclick="window.setInterviewStatus('${i.id}','confirmed')">Xác nhận</button><button class="btn btn-sm btn-outline" onclick="window.setInterviewStatus('${i.id}','declined')">Từ chối</button>` : ""}
                   ${i.createdBy ? `<button onclick="window.App.openChat('${i.createdBy}')" class="btn btn-sm btn-info" title="Nhắn tin"><i class="fa-solid fa-comments"></i> Nhắn tin</button>` : ""}
                   <button class="btn btn-sm btn-outline" onclick="window.viewDetails('${i.id}')">Xem ghi chú</button>
                 </div>
@@ -201,6 +203,14 @@
           Toast.info("Không có ghi chú thêm cho buổi phỏng vấn này.");
         }
       }
+
+      window.setInterviewStatus = async function(id, status) {
+        try {
+          await window.DB.updateInterviewStatus(id, status);
+          Toast.success("Đã cập nhật phản hồi lịch phỏng vấn.");
+          await renderInterviews();
+        } catch (error) { Toast.error(error.message || "Không cập nhật được lịch phỏng vấn."); }
+      };
 
       document.addEventListener("DOMContentLoaded", renderInterviews);
     </script>

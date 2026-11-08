@@ -125,13 +125,15 @@
       const user = window.Auth.requireAuth(["employer"]);
       if (!user) throw "redirect";
       window.App.renderSidebar("employer", "applicants");
+      const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]);
 
       async function initPage() {
         const container = document.getElementById("candidateList");
         container.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; padding: 40px;">Đang nạp danh sách ứng viên...</div>';
 
         try {
-          const allUsers = await window.DB.getUsers();
+          const [allUsers, savedCandidates] = await Promise.all([window.DB.getUsers(), window.DB.getSavedCandidates()]);
+          window.savedCandidateIds = new Set(savedCandidates.map((candidate) => String(candidate.id)));
           const allCandidates = allUsers.filter((u) => u.role === "candidate");
           
           window.allCandidates = allCandidates; // Store globally for search
@@ -156,20 +158,20 @@
             return `
           <div class="card animate-fade-up flex" style="flex-direction:column; align-items:flex-start; gap:16px; min-height: 280px;">
             <div class="flex" style="gap:16px; width:100%">
-              <div class="avatar" style="width:50px;height:50px;border-radius:50%;background:linear-gradient(135deg, var(--primary), #38bdf8);display:flex;align-items:center;justify-content:center;font-weight:bold;color:white;font-size:1.2rem">${c.fullName ? c.fullName[0] : 'U'}</div>
+              <div class="avatar" style="width:50px;height:50px;border-radius:50%;background:linear-gradient(135deg, var(--primary), #38bdf8);display:flex;align-items:center;justify-content:center;font-weight:bold;color:white;font-size:1.2rem">${escapeHtml(c.fullName ? c.fullName[0] : 'U')}</div>
               <div>
                 <h3 style="margin-bottom:4px">${window.App.profileLink("candidate", c.id, c.fullName || 'Người dùng')}</h3>
-                <p style="color:var(--text-light);font-size:0.9rem">${c.title || "Ứng viên mới"}</p>
+                <p style="color:var(--text-light);font-size:0.9rem">${escapeHtml(c.title || "Ứng viên mới")}</p>
               </div>
             </div>
             <div style="font-size:0.85rem; color:var(--text-light); flex: 1;">
-              <div style="margin-bottom:8px"><i class="fa-solid fa-location-dot text-danger"></i> ${c.location || "Chưa cập nhật"} &nbsp;·&nbsp; <i class="fa-solid fa-briefcase text-primary"></i> ${c.experience || "Mới tốt nghiệp"}</div>
+              <div style="margin-bottom:8px"><i class="fa-solid fa-location-dot text-danger"></i> ${escapeHtml(c.location || "Chưa cập nhật")} &nbsp;·&nbsp; <i class="fa-solid fa-briefcase text-primary"></i> ${escapeHtml(c.experience || "Mới tốt nghiệp")}</div>
               <div class="flex" style="gap:6px; flex-wrap:wrap; margin-top:10px">
-                ${skills.length ? skills.map((s) => `<span class="badge badge-neutral">${s}</span>`).join("") : '<span style="color:var(--text-lighter); font-style: italic;">Chưa cập nhật kỹ năng</span>'}
+                ${skills.length ? skills.map((s) => `<span class="badge badge-neutral">${escapeHtml(s)}</span>`).join("") : '<span style="color:var(--text-lighter); font-style: italic;">Chưa cập nhật kỹ năng</span>'}
               </div>
             </div>
             <div class="applicant-card-actions">
-              <button class="btn btn-sm btn-outline applicant-action" onclick="Toast.success('Đã lưu ứng viên')"><i class="fa-solid fa-heart"></i> Lưu</button>
+              <button class="btn btn-sm btn-outline applicant-action" onclick="toggleCandidateSaved('${c.id}')"><i class="fa-${window.savedCandidateIds?.has(String(c.id)) ? 'solid' : 'regular'} fa-heart"></i> ${window.savedCandidateIds?.has(String(c.id)) ? 'Đã lưu' : 'Lưu'}</button>
               <a class="btn btn-sm btn-outline applicant-action" href="candidate-profile.html?id=${encodeURIComponent(c.id)}"><i class="fa-regular fa-id-card"></i> Xem hồ sơ</a>
               <button class="btn btn-sm btn-outline applicant-action" onclick="sendInviteToCandidate('${c.id}')"><i class="fa-solid fa-handshake"></i> Mời kết nối</button>
               <button class="btn btn-sm btn-primary applicant-action" onclick="window.App.openChat('${c.id}')"><i class="fa-regular fa-comment-dots"></i> Liên hệ</button>
@@ -207,6 +209,24 @@
         } catch (error) {
           console.error('Không gửi được lời mời:', error);
           Toast.error(error.message || 'Không gửi được lời mời.');
+        }
+      };
+
+      window.toggleCandidateSaved = async function(candidateId) {
+        const id = String(candidateId);
+        try {
+          if (window.savedCandidateIds.has(id)) {
+            await window.DB.unsaveCandidate(id);
+            window.savedCandidateIds.delete(id);
+            Toast.success('Đã bỏ lưu ứng viên.');
+          } else {
+            await window.DB.saveCandidate(id);
+            window.savedCandidateIds.add(id);
+            Toast.success('Đã lưu ứng viên.');
+          }
+          render(window.allCandidates || []);
+        } catch (error) {
+          Toast.error(error.message || 'Không cập nhật được danh sách ứng viên đã lưu.');
         }
       };
 

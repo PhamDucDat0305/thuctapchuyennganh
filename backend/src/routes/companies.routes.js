@@ -15,7 +15,7 @@ router.get('/:id', asyncHandler(async (req, res) => {
       SELECT id, employer_id AS employerId, name, logo_url AS logoUrl, logo, industry, [size] AS size,
         location, website, description, created_at AS createdAt, updated_at AS updatedAt
       FROM dbo.companies
-      WHERE id = @id`);
+      WHERE id = @id AND admin_status = N'active'`);
   if (!result.recordset.length) return res.status(404).json({ error: 'Không tìm thấy công ty' });
   return res.json(result.recordset[0]);
 }));

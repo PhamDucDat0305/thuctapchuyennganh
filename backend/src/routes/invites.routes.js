@@ -66,18 +66,25 @@ router.post('/', requireRole('employer'), limitInviteSend, asyncHandler(async (r
         AND status = N'pending'`);
   if (duplicate.recordset.length) return res.status(409).json({ error: 'Bạn đã gửi lời mời đang chờ phản hồi cho ứng viên này' });
 
-  const inserted = await pool.request()
-    .input('employerId', sql.BigInt, req.user.id)
-    .input('candidateId', sql.BigInt, candidateId)
-    .input('jobId', sql.BigInt, jobId)
-    .input('message', sql.NVarChar(1000), message || null)
-    .query(`
-      INSERT INTO dbo.invites (employer_id, candidate_id, job_id, message)
-      OUTPUT inserted.id
-      VALUES (@employerId, @candidateId, @jobId, @message)`);
-  const result = await pool.request().input('id', sql.BigInt, inserted.recordset[0].id)
-    .query(`${inviteSelect} WHERE i.id = @id`);
-  return res.status(201).json(result.recordset[0]);
+  try {
+    const inserted = await pool.request()
+      .input('employerId', sql.BigInt, req.user.id)
+      .input('candidateId', sql.BigInt, candidateId)
+      .input('jobId', sql.BigInt, jobId)
+      .input('message', sql.NVarChar(1000), message || null)
+      .query(`
+        INSERT INTO dbo.invites (employer_id, candidate_id, job_id, message)
+        VALUES (@employerId, @candidateId, @jobId, @message);
+        SELECT CONVERT(BIGINT, SCOPE_IDENTITY()) AS id`);
+    const result = await pool.request().input('id', sql.BigInt, inserted.recordset[0].id)
+      .query(`${inviteSelect} WHERE i.id = @id`);
+    return res.status(201).json(result.recordset[0]);
+  } catch (error) {
+    if (error.number === 2601 || error.number === 2627) {
+      return res.status(409).json({ error: 'Bạn đã gửi lời mời đang chờ phản hồi cho ứng viên này' });
+    }
+    throw error;
+  }
 }));
 
 router.patch('/:id/status', requireRole('candidate'), asyncHandler(async (req, res) => {

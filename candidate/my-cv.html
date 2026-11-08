@@ -96,53 +96,16 @@
             <h1><i class="fa-solid fa-file-lines"></i> CV của tôi</h1>
             <p>Quản lý hồ sơ CV để ứng tuyển nhanh chóng</p>
           </div>
-          <button
-            class="btn btn-primary"
-            onclick="Toast.info('Đang mở form tạo CV mới')"
-          >
-            + Tạo CV Mới
-          </button>
+          <span class="badge badge-neutral">PDF, DOC, DOCX, JPG, PNG, WEBP · tối đa 10 MB</span>
         </div>
 
+        <form class="card" id="cvUploadForm" style="margin-bottom:20px;display:grid;grid-template-columns:1fr 2fr auto;gap:12px;align-items:end">
+          <label class="form-group mb-0"><span class="form-label">Tên CV</span><input class="form-input" name="title" maxlength="150" placeholder="Ví dụ: CV Frontend Developer" required></label>
+          <label class="form-group mb-0"><span class="form-label">Chọn tệp</span><input class="form-input" name="file" type="file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/jpeg,image/png,image/webp" required></label>
+          <button class="btn btn-primary" type="submit"><i class="fa-solid fa-upload"></i> Tải CV lên</button>
+        </form>
         <div class="grid grid-3 stagger" id="cvList">
-          <div class="card animate-fade-up">
-            <div class="cv-preview-box">
-              <span class="cv-preview-icon">📄</span>
-            </div>
-            <h3 class="cv-title">CV Frontend Developer</h3>
-            <p class="cv-meta">Cập nhật lần cuối: Hôm nay</p>
-            <div class="flex-between">
-              <span class="badge badge-success">Mặc định</span>
-              <div class="flex" style="gap: 8px">
-                <button class="btn btn-sm btn-outline" title="Chỉnh sửa">
-                  ✏️
-                </button>
-                <button class="btn btn-sm btn-danger" title="Xóa">🗑️</button>
-              </div>
-            </div>
-          </div>
-
-          <div class="card animate-fade-up">
-            <div class="cv-preview-box">
-              <span class="cv-preview-icon">📄</span>
-            </div>
-            <h3 class="cv-title">CV UI/UX Design</h3>
-            <p class="cv-meta">Cập nhật lần cuối: 2 tuần trước</p>
-            <div class="flex-between">
-              <button
-                class="btn btn-sm btn-light"
-                onclick="Toast.success('Đã đặt làm CV mặc định')"
-              >
-                Đặt mặc định
-              </button>
-              <div class="flex" style="gap: 8px">
-                <button class="btn btn-sm btn-outline" title="Chỉnh sửa">
-                  ✏️
-                </button>
-                <button class="btn btn-sm btn-danger" title="Xóa">🗑️</button>
-              </div>
-            </div>
-          </div>
+          <div class="empty-state" style="grid-column:1/-1">Đang tải CV...</div>
         </div>
       </main>
     </div>
@@ -155,6 +118,38 @@
       const user = window.Auth.requireAuth(["candidate"]);
       if (!user) throw "redirect";
       window.App.renderSidebar("candidate", "my_cv");
+      const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]);
+      const formatBytes = (bytes) => bytes < 1024 * 1024 ? `${Math.ceil(bytes / 1024)} KB` : `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+      async function renderCvs() {
+        const container = document.getElementById("cvList");
+        try {
+          const cvs = await window.DB.getCandidateCvs();
+          container.innerHTML = cvs.length ? cvs.map((cv) => `
+            <article class="card animate-fade-up">
+              <div class="cv-preview-box"><i class="fa-solid fa-file-pdf cv-preview-icon"></i></div>
+              <h3 class="cv-title">${escapeHtml(cv.title)}</h3>
+              <p class="cv-meta">${escapeHtml(cv.originalName)}${cv.isAvailable ? ` · ${formatBytes(cv.sizeBytes)}` : ' · Tệp cũ không có trên máy chủ, hãy tải lại CV'}</p>
+              <p class="cv-meta">Cập nhật: ${window.App.formatDate(cv.updatedAt)}</p>
+              <div class="flex-between" style="gap:8px;flex-wrap:wrap">
+                ${cv.isDefault ? '<span class="badge badge-success">CV mặc định</span>' : `<button class="btn btn-sm btn-light" onclick="setDefaultCv('${cv.id}')">Đặt mặc định</button>`}
+                ${cv.isAvailable ? `<a class="btn btn-sm btn-outline" href="${cv.downloadUrl}" rel="noopener"><i class="fa-solid fa-download"></i> Tải xuống</a>` : ''}
+                <button class="btn btn-sm btn-danger" onclick="deleteCv('${cv.id}')" aria-label="Xóa CV"><i class="fa-solid fa-trash"></i></button>
+              </div>
+            </article>`).join("") : '<div class="empty-state" style="grid-column:1/-1"><div class="empty-icon"><i class="fa-solid fa-file-circle-plus"></i></div><h3>Chưa có CV nào</h3><p>Tải CV lên để chọn khi ứng tuyển.</p></div>';
+        } catch (error) { container.innerHTML = `<p class="text-danger">${escapeHtml(error.message || "Không tải được danh sách CV")}</p>`; }
+      }
+      window.setDefaultCv = async (id) => { try { await window.DB.setDefaultCandidateCv(id); Toast.success("Đã đặt CV mặc định."); renderCvs(); } catch (e) { Toast.error(e.message); } };
+      window.deleteCv = async (id) => { if (!confirm("Xóa CV này? CV đang gắn với đơn ứng tuyển không thể xóa.")) return; try { await window.DB.deleteCandidateCv(id); Toast.success("Đã xóa CV."); renderCvs(); } catch (e) { Toast.error(e.message || "Không xóa được CV."); } };
+      document.getElementById("cvUploadForm").addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const form = event.currentTarget; const file = form.elements.file.files[0];
+        if (!file) return;
+        const button = form.querySelector('[type="submit"]'); button.disabled = true;
+        try { await window.DB.uploadCandidateCv(file, form.elements.title.value); form.reset(); Toast.success("Đã tải CV lên."); await renderCvs(); }
+        catch (error) { Toast.error(error.message || "Không tải được CV lên."); }
+        finally { button.disabled = false; }
+      });
+      renderCvs();
     </script>
   </body>
 </html>

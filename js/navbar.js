@@ -312,6 +312,19 @@
     const user = getUser();
     placeholder.outerHTML = buildNavbarHTML(user);
     setupEvents();
+    if (user?.role === "employer" && window.DB?.getCompanyByEmployer) {
+      window.DB.getCompanyByEmployer(user.id).then((company) => {
+        const logo = company?.logoUrl || company?.logo;
+        if (!logo) return;
+        document.querySelectorAll("#navAuthArea .nav-avatar, #navAuthArea .dd-avatar").forEach((avatar) => {
+          const image = document.createElement("img");
+          image.src = logo;
+          image.alt = "Logo công ty";
+          image.onerror = () => image.remove();
+          avatar.replaceChildren(image);
+        });
+      }).catch((error) => console.warn("Navbar: không tải được logo công ty", error));
+    }
     if (user && user.role !== "admin" && window.BadgeNotifier) {
       window.BadgeNotifier.startPolling(user.id, user.role, 15000);
     }
