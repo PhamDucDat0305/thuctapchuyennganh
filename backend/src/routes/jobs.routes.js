@@ -1,7 +1,7 @@
 const express = require('express');
-const { sql, getPool } = require('../config/database');
 const asyncHandler = require('../utils/asyncHandler');
 const rateLimit = require('../middleware/rateLimit');
+const controller = require('../controllers/jobs.controller');
 
 const router = express.Router();
 const limitJobViews = rateLimit({
@@ -10,94 +10,8 @@ const limitJobViews = rateLimit({
   message: 'Bạn đã xem quá nhiều tin trong thời gian ngắn. Vui lòng thử lại sau.',
 });
 
-const jobSelect = `
-  SELECT
-    j.id,
-    j.title,
-    j.description,
-    j.requirements,
-    j.benefits,
-    j.category,
-    j.location,
-    j.salary_display AS salary,
-    j.salary_min AS salaryMin,
-    j.salary_max AS salaryMax,
-    j.job_type AS type,
-    j.experience,
-    j.status,
-    j.views,
-    j.created_at AS createdAt,
-    j.expires_at AS expiresAt,
-    j.recruiter_id AS createdBy,
-    j.recruiter_id AS recruiterId,
-    c.id AS companyId,
-    c.name AS companyName
-  FROM dbo.jobs AS j
-  INNER JOIN dbo.companies AS c ON c.id = j.company_id`;
-
-// Public job board: return active, non-expired jobs for the existing list UI.
-router.get('/', asyncHandler(async (req, res) => {
-  const result = await getPool().request().query(`
-    ${jobSelect}
-    INNER JOIN dbo.users AS owner ON owner.id = j.recruiter_id
-    WHERE j.status = N'active'
-      AND j.admin_visibility = N'visible' AND c.admin_status = N'active' AND owner.admin_locked = 0
-      AND (j.expires_at IS NULL OR j.expires_at > SYSUTCDATETIME())
-    ORDER BY j.created_at DESC, j.id DESC`);
-
-  res.json(result.recordset);
-}));
-
-// Count each detail-page visit atomically; the employer's own visits do not count.
-router.post('/:id/view', limitJobViews, asyncHandler(async (req, res) => {
-  if (!/^[1-9]\d*$/.test(req.params.id)) {
-    return res.status(400).json({ error: 'Mã công việc không hợp lệ' });
-  }
-
-  const result = await getPool().request()
-    .input('id', sql.BigInt, req.params.id)
-    .input('viewerId', sql.BigInt, req.session?.userId || null)
-    .query(`
-      DECLARE @updatedJobs TABLE (job_id BIGINT NOT NULL);
-      UPDATE dbo.jobs
-      SET views = ISNULL(views, 0) + 1
-      OUTPUT inserted.id INTO @updatedJobs(job_id)
-      WHERE id = @id
-        AND status = N'active'
-        AND admin_visibility = N'visible'
-        AND EXISTS (SELECT 1 FROM dbo.companies c WHERE c.id = dbo.jobs.company_id AND c.admin_status = N'active')
-        AND EXISTS (SELECT 1 FROM dbo.users u WHERE u.id = dbo.jobs.recruiter_id AND u.admin_locked = 0)
-        AND (expires_at IS NULL OR expires_at > SYSUTCDATETIME())
-        AND (@viewerId IS NULL OR recruiter_id <> @viewerId);
-
-      SELECT CAST(CASE WHEN EXISTS (SELECT 1 FROM @updatedJobs) THEN 1 ELSE 0 END AS bit) AS counted,
-        (SELECT views FROM dbo.jobs WHERE id = @id) AS views`);
-
-  const row = result.recordset[0];
-  if (!row?.counted) return res.json({ counted: false });
-  return res.json({ counted: true, views: Number(row.views) });
-}));
-
-router.get('/:id', asyncHandler(async (req, res) => {
-  if (!/^\d+$/.test(req.params.id)) {
-    return res.status(400).json({ error: 'Mã công việc không hợp lệ' });
-  }
-
-  const result = await getPool().request()
-    .input('id', sql.BigInt, req.params.id)
-    .query(`
-      ${jobSelect}
-      INNER JOIN dbo.users AS owner ON owner.id = j.recruiter_id
-      WHERE j.id = @id
-        AND j.status = N'active'
-        AND j.admin_visibility = N'visible' AND c.admin_status = N'active' AND owner.admin_locked = 0
-        AND (j.expires_at IS NULL OR j.expires_at > SYSUTCDATETIME())`);
-
-  if (result.recordset.length === 0) {
-    return res.status(404).json({ error: 'Không tìm thấy việc làm' });
-  }
-
-  return res.json(result.recordset[0]);
-}));
+router.get('/', asyncHandler(controller.list));
+router.post('/:id/view', limitJobViews, asyncHandler(controller.countView));
+router.get('/:id', asyncHandler(controller.getById));
 
 module.exports = router;

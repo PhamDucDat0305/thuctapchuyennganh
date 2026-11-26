@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <link
+      rel="apple-touch-icon"
+      sizes="57x57"
+      href="../ico/apple-icon-57x57.png"
+    />
+    <link
+      rel="apple-touch-icon"
+      sizes="60x60"
+      href="../ico/apple-icon-60x60.png"
+    />
+    <link
+      rel="apple-touch-icon"
+      sizes="72x72"
+      href="../ico/apple-icon-72x72.png"
+    />
+    <link
+      rel="apple-touch-icon"
+      sizes="76x76"
+      href="../ico/apple-icon-76x76.png"
+    />
+    <link
+      rel="apple-touch-icon"
+      sizes="114x114"
+      href="../ico/apple-icon-114x114.png"
+    />
+    <link
+      rel="apple-touch-icon"
+      sizes="120x120"
+      href="../ico/apple-icon-120x120.png"
+    />
+    <link
+      rel="apple-touch-icon"
+      sizes="144x144"
+      href="../ico/apple-icon-144x144.png"
+    />
+    <link
+      rel="apple-touch-icon"
+      sizes="152x152"
+      href="../ico/apple-icon-152x152.png"
+    />
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="../ico/apple-icon-180x180.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="192x192"
+      href="../ico/android-icon-192x192.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="../ico/favicon-32x32.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="96x96"
+      href="../ico/favicon-96x96.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="16x16"
+      href="../ico/favicon-16x16.png"
+    />
+    <link rel="manifest" href="../ico/manifest.json" />
+    <meta name="msapplication-TileColor" content="#ffffff" />
+    <meta name="msapplication-TileImage" content="./ico/ms-icon-144x144.png" />
+    <meta name="theme-color" content="#ffffff" />
+  <title>Danh sách ứng viên — JobViệt</title>
+  <link rel="stylesheet" href="../css/styles.css">
+  <link rel="stylesheet" href="../css/navbar.css">
+  <link rel="stylesheet" href="../css/pages/dashboard.css">
+  <link rel="stylesheet" href="../css/pages/employer.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+</head>
+<body>
+  <div id="navbar-placeholder"></div>
+  <div class="layout-sidebar">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="content-area">
+      <div class="content-header" id="header"></div>
+      <div id="appList" class="stagger"></div>
+    </main>
+  </div>
+
+  <script type="module" src="../js/db.js"></script><script type="module" src="../js/auth.js"></script><script src="../js/notifications.js"></script><script type="module" src="../js/app.js"></script><script src="../js/navbar.js"></script>
+  <script type="module">
+    document.addEventListener("DOMContentLoaded", async () => {
+      // Auth & App được export qua window từ ES Modules
+      // Dùng custom event thay vì setTimeout để đảm bảo module đã init
+      const waitForModules = () => new Promise(resolve => {
+        if (window.Auth && window.DB && window.App) { resolve(); return; }
+        const check = setInterval(() => {
+          if (window.Auth && window.DB && window.App) { clearInterval(check); resolve(); }
+        }, 20);
+        setTimeout(() => { clearInterval(check); resolve(); }, 3000);
+      });
+      await waitForModules();
+
+      const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+      })[char]);
+
+      const user = window.Auth.requireAuth(['employer']);
+      if(!user) return;
+      window.App.renderSidebar('employer','myjobs');
+      
+      const jobId = new URLSearchParams(location.search).get('id');
+      if (!jobId) {
+        document.getElementById('header').innerHTML = '<h1>Thiếu mã tin tuyển dụng</h1>';
+        return;
+      }
+
+      // Define render function
+      window.render = async function() {
+        const appListContainer = document.getElementById('appList');
+        appListContainer.innerHTML = '<div class="text-center" style="padding: 40px;">Đang tải danh sách hồ sơ...</div>';
+        
+        try {
+          const allApps = await window.DB.getApplicationsByJob(jobId);
+          // Keep terminal states visible so changing a stage never makes a candidate disappear.
+          const apps = allApps;
+          
+          if (!apps.length) { 
+            appListContainer.innerHTML = `
+              <div class="empty-state">
+                <div class="empty-icon"><i class="fa-solid fa-users"></i></div>
+                <h3>Chưa có ứng viên nào</h3>
+                <p>Tin tuyển dụng này hiện chưa nhận được hồ sơ nào mới.</p>
+              </div>`; 
+            return; 
+          }
+          
+          const statusMap = { 
+            applied: ['<i class="fa-solid fa-envelope"></i> Mới ứng tuyển', 'badge-info'],
+            reviewing: ['<i class="fa-solid fa-magnifying-glass"></i> Đang xem xét', 'badge-warning'],
+            interview_invited: ['<i class="fa-solid fa-calendar-check"></i> Mời phỏng vấn', 'badge-warning'],
+            interviewed: ['<i class="fa-solid fa-user-check"></i> Đã phỏng vấn', 'badge-info'],
+            offered: ['<i class="fa-solid fa-file-signature"></i> Đã gửi offer', 'badge-info'],
+            offer_accepted: ['<i class="fa-solid fa-circle-check"></i> Đã đồng ý offer', 'badge-success'],
+            hired: ['<i class="fa-solid fa-briefcase"></i> Đã nhận việc', 'badge-success'],
+            employment_ended: ['<i class="fa-solid fa-circle-minus"></i> Đã kết thúc hợp tác', 'badge-neutral'],
+            offer_declined: ['<i class="fa-solid fa-circle-xmark"></i> Ứng viên từ chối offer', 'badge-dark'],
+            withdrawn: ['<i class="fa-solid fa-arrow-rotate-left"></i> Ứng viên rút hồ sơ', 'badge-neutral'],
+      accepted: ['<i class="fa-solid fa-circle-check"></i> Đậu phỏng vấn', 'badge-success'],
+            rejected: ['<i class="fa-solid fa-circle-xmark"></i> Không đạt', 'badge-danger'],
+            failed: ['<i class="fa-solid fa-circle-xmark"></i> Không đạt', 'badge-danger']
+          };
+
+          const rows = [];
+          for (const a of apps) {
+            const [label, cls] = statusMap[a.status] || ['Chưa rõ', 'badge-neutral'];
+            rows.push(`
+              <div class="card applicant-card mb-2 animate-fade-up" style="padding: 20px;">
+                <div class="flex-between flex-wrap" style="gap:12px">
+                  <div class="flex" style="gap:16px">
+                    <div class="applicant-avatar" style="width:48px; height:48px; border-radius:50%; background:var(--bg-light); display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:1.2rem; border:1px solid var(--border)">${escapeHtml((a.fullName || 'U')[0])}</div>
+                    <div>
+                      <strong class="applicant-name" style="font-size:1.1rem">${window.App.profileLink("candidate", a.candidateId || a.applicantId, a.fullName || 'Người dùng')}</strong><br>
+                      <span class="applicant-meta" style="font-size:0.85rem; color:var(--text-light)">
+                        <i class="fa-solid fa-envelope"></i> ${escapeHtml(a.email || '')} ·
+                        <i class="fa-solid fa-calendar-days"></i> ${window.App.formatDate(a.appliedAt)}
+                      </span>
+                    </div>
+                  </div>
+                  <span class="badge ${cls}">${label}</span>
+                </div>
+                <div class="cv-content-box" style="margin: 16px 0; padding: 12px; background: var(--bg); border-radius: 8px; border: 1px solid var(--border-light);">
+                  <strong class="cv-label" style="display:block; margin-bottom:4px; font-size:0.9rem;"><i class="fa-solid fa-file-lines"></i> Nội dung giới thiệu / CV (văn bản):</strong>
+                  <div class="cv-text" style="white-space: pre-wrap; font-size: 0.95rem;">${escapeHtml(a.cv || 'Không có nội dung giới thiệu dạng văn bản.')}</div>
+                  ${a.cvDownloadUrl ? `<a class="btn btn-sm btn-outline" href="${a.cvDownloadUrl}" target="_blank" rel="noopener noreferrer"><i class="fa-regular fa-eye"></i> Xem CV: ${escapeHtml(a.cvFileName || a.cvTitle || "CV đính kèm")}</a>` : ""}
+                </div>
+                <div class="flex" style="gap:8px" id="actions_${a.id}">
+                  <button onclick="window.App.openChat('${a.applicantId || a.candidateId}')" class="btn btn-sm btn-info"><i class="fa-solid fa-comments"></i> Nhắn tin</button>
+                  ${['applied', 'reviewing'].includes(a.status) ? `
+                      <button class="btn btn-sm btn-primary" onclick="window.showInterviewForm('${a.id}')"><i class="fa-solid fa-calendar-plus"></i> Đặt lịch phỏng vấn</button>
+                      <button class="btn btn-sm btn-outline-danger" onclick="window.updateStatus('${a.id}','rejected')"><i class="fa-solid fa-xmark"></i> Từ chối</button>
+                  ` : a.status === 'interview_invited' ? `
+                      <button class="btn btn-sm btn-primary" onclick="window.showInterviewForm('${a.id}')"><i class="fa-solid fa-calendar-plus"></i> Cập nhật lịch phỏng vấn</button>
+                      <button class="btn btn-sm btn-outline-danger" onclick="window.updateStatus('${a.id}','rejected')"><i class="fa-solid fa-xmark"></i> Từ chối</button>
+                  ` : a.status === 'interviewed' ? `
+                      <a class="btn btn-sm btn-light" href="interviews.html">Mở lịch phỏng vấn để quyết định</a>
+                  ` : `<span style="font-size:.85rem;color:var(--text-light)">Trạng thái: <strong>${label}</strong></span>`}
+                </div>
+                <div id="interviewFormContainer_${a.id}" class="interview-form-inline" style="display:none; margin-top:16px; padding:16px; background:var(--bg-light); border-radius:8px;"></div>
+              </div>`);
+          }
+          appListContainer.innerHTML = rows.join('');
+        } catch (err) {
+          console.error(err);
+          appListContainer.innerHTML = '<p class="text-center text-danger">Lỗi khi tải danh sách hồ sơ.</p>';
+        }
+      };
+
+      // Actions
+      window.updateStatus = async function(appId, status) {
+        if(!confirm('Xác nhận thay đổi trạng thái ứng viên?')) return;
+        await window.DB.updateApplication(appId, { status });
+        Toast.success('Cập nhật trạng thái thành công');
+        window.render();
+      };
+
+      window.showInterviewForm = function(appId) {
+        const container = document.getElementById(`interviewFormContainer_${appId}`);
+        const actions = document.getElementById(`actions_${appId}`);
+        actions.style.display = 'none';
+        container.style.display = 'block';
+        container.innerHTML = `
+          <h4 class="mb-3" style="color:var(--primary); font-size:1rem;"><i class="fa-solid fa-calendar-plus"></i> Thiết lập lịch phỏng vấn</h4>
+          <form onsubmit="window.handleInlineSchedule(event, '${appId}')">
+            <div class="grid grid-2" style="gap:12px; margin-bottom:12px">
+              <div class="form-group mb-0">
+                <label class="form-label form-label-sm">Ngày phỏng vấn</label>
+                <input type="date" class="form-input" id="intDate_${appId}" required>
+              </div>
+              <div class="form-group mb-0">
+                <label class="form-label form-label-sm">Giờ phỏng vấn</label>
+                <input type="time" class="form-input" id="intTime_${appId}" required>
+              </div>
+            </div>
+            <div class="form-group mb-3">
+              <label class="form-label form-label-sm">Hình thức</label>
+              <select class="form-input" id="intType_${appId}">
+                <option value="online">Online (Google Meet / Zoom)</option>
+                <option value="offline">Trực tiếp tại văn phòng</option>
+              </select>
+            </div>
+            <div class="form-group mb-3">
+              <label class="form-label form-label-sm">Ghi chú / Địa điểm</label>
+              <textarea class="form-textarea" id="intNotes_${appId}" rows="2" placeholder="Link họp hoặc địa chỉ..."></textarea>
+            </div>
+            <div class="flex-end" style="gap:10px">
+              <button type="button" class="btn btn-sm btn-ghost" onclick="window.render()">Hủy bỏ</button>
+              <button type="submit" class="btn btn-sm btn-primary">Xác nhận lịch hẹn</button>
+            </div>
+          </form>
+        `;
+      };
+
+      window.handleInlineSchedule = async function(e, appId) {
+        e.preventDefault();
+        const data = {
+          date: document.getElementById(`intDate_${appId}`).value,
+          time: document.getElementById(`intTime_${appId}`).value,
+          type: document.getElementById(`intType_${appId}`).value,
+          notes: document.getElementById(`intNotes_${appId}`).value
+        };
+        
+        try {
+          await window.DB.scheduleInterview(appId, data);
+          Toast.success('Đã đặt lịch phỏng vấn thành công');
+          window.render();
+        } catch (error) {
+          console.error('Không thể đặt lịch phỏng vấn:', error);
+          Toast.error(error.message || 'Không thể đặt lịch phỏng vấn. Vui lòng thử lại.');
+        }
+      };
+
+      // Initial fetch for job header and first render
+      try {
+        const job = await window.DB.getJobById(jobId);
+        if (!job) { 
+          document.getElementById('header').innerHTML = '<h1>Không tìm thấy tin tuyển dụng</h1>'; 
+        } else {
+          document.getElementById('header').innerHTML = `
+            <h1><i class="fa-solid fa-users"></i> Ứng viên — ${escapeHtml(job.title)}</h1>
+            <p>${window.App.profileLink("company", job.companyId, job.companyName)} · ${escapeHtml(job.location)}</p>`;
+          window.render();
+        }
+      } catch (err) {
+        console.error(err);
+        document.getElementById('header').innerHTML = '<h1>Lỗi tải thông tin công việc</h1>';
+      }
+    });
+  </script>
+</body>
+</html>
+

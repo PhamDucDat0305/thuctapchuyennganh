@@ -1,5 +1,5 @@
 const express = require('express');
-const { checkDatabase } = require('../config/database');
+const { sequelize } = require('../models');
 
 const router = express.Router();
 
@@ -9,7 +9,7 @@ router.get('/', (req, res) => {
 
 router.get('/db', async (req, res) => {
   try {
-    await checkDatabase();
+    await sequelize.query('SELECT 1 AS ok');
     res.json({ status: 'ok', database: 'connected' });
   } catch (err) {
     console.error('[health/db]', err.message);

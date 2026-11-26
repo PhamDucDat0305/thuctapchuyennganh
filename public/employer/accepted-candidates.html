@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+    <link
+      rel="apple-touch-icon"
+      sizes="57x57"
+      href="../ico/apple-icon-57x57.png"
+    />
+    <link
+      rel="apple-touch-icon"
+      sizes="60x60"
+      href="../ico/apple-icon-60x60.png"
+    />
+    <link
+      rel="apple-touch-icon"
+      sizes="72x72"
+      href="../ico/apple-icon-72x72.png"
+    />
+    <link
+      rel="apple-touch-icon"
+      sizes="76x76"
+      href="../ico/apple-icon-76x76.png"
+    />
+    <link
+      rel="apple-touch-icon"
+      sizes="114x114"
+      href="../ico/apple-icon-114x114.png"
+    />
+    <link
+      rel="apple-touch-icon"
+      sizes="120x120"
+      href="../ico/apple-icon-120x120.png"
+    />
+    <link
+      rel="apple-touch-icon"
+      sizes="144x144"
+      href="../ico/apple-icon-144x144.png"
+    />
+    <link
+      rel="apple-touch-icon"
+      sizes="152x152"
+      href="../ico/apple-icon-152x152.png"
+    />
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="../ico/apple-icon-180x180.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="192x192"
+      href="../ico/android-icon-192x192.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="../ico/favicon-32x32.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="96x96"
+      href="../ico/favicon-96x96.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="16x16"
+      href="../ico/favicon-16x16.png"
+    />
+    <link rel="manifest" href="../ico/manifest.json" />
+    <meta name="msapplication-TileColor" content="#ffffff" />
+    <meta name="msapplication-TileImage" content="./ico/ms-icon-144x144.png" />
+    <meta name="theme-color" content="#ffffff" />
+    <title>Ứng viên đã trúng tuyển — JobViệt</title>
+    <link rel="stylesheet" href="../css/styles.css" />
+    <link rel="stylesheet" href="../css/navbar.css" />
+    <link rel="stylesheet" href="../css/pages/dashboard.css" />
+    <link rel="stylesheet" href="../css/pages/employer.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css"
+    />
+  </head>
+  <body>
+    <div id="navbar-placeholder"></div>
+    <div class="layout-sidebar">
+      <aside class="sidebar" id="sidebar"></aside>
+      <main class="content-area">
+        <div class="content-header">
+          <h1>
+            <i class="fa-solid fa-circle-check text-success"></i> Ứng viên đã
+            trúng tuyển
+          </h1>
+          <p>
+            Danh sách các ứng viên đã được bạn chấp nhận cho các vị trí tuyển
+            dụng
+          </p>
+        </div>
+
+        <div class="grid grid-3 stagger" id="acceptedCandidates">
+          <!-- Rendered by JS -->
+        </div>
+
+        <section style="margin-top: 40px;">
+          <div class="content-header" style="margin-bottom: 20px;">
+            <h2><i class="fa-solid fa-handshake text-primary"></i> Ứng viên đã kết nối</h2>
+            <p>Những ứng viên đã chấp nhận lời mời kết nối từ bạn.</p>
+          </div>
+          <div class="grid grid-3 stagger" id="connectedCandidates">
+            <!-- Rendered by JS -->
+          </div>
+        </section>
+      </main>
+    </div>
+    <script type="module" src="../js/db.js"></script>
+    <script type="module" src="../js/auth.js"></script>
+    <script src="../js/notifications.js"></script>
+    <script type="module" src="../js/app.js"></script>
+    <script src="../js/navbar.js"></script>
+    <script type="module">
+      const user = window.Auth.requireAuth(["employer"]);
+      if (!user) throw "redirect";
+      window.App.renderSidebar("employer", "accepted");
+
+      async function render() {
+        const container = document.getElementById("acceptedCandidates");
+        container.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 40px;">Đang nạp danh sách...</div>';
+
+        try {
+          const myJobs = await window.DB.getJobsByEmployer(user.id);
+          const myJobIds = new Set(myJobs.map((j) => j.id));
+
+          const allApps = await window.DB.getApplications();
+          const acceptedApps = allApps.filter(
+            (a) => myJobIds.has(a.jobId) && ["hired", "accepted"].includes(a.status),
+          );
+
+          if (!acceptedApps.length) {
+            container.innerHTML = `
+            <div class="empty-state" style="grid-column: 1/-1; padding: 60px;">
+              <div class="empty-icon"><i class="fa-solid fa-user-check"></i></div>
+              <h3>Chưa có ứng viên trúng tuyển</h3>
+              <p>Hãy xem lại các hồ sơ ứng tuyển để lựa chọn nhân sự phù hợp.</p>
+              <a href="applied-candidates.html" class="btn btn-primary mt-2">Xem hồ sơ ứng tuyển</a>
+            </div>
+          `;
+            return;
+          }
+
+          const htmlParts = [];
+          for (const a of acceptedApps) {
+            const job = await window.DB.getJobById(a.jobId);
+            const candidate = await window.DB.getUserById(a.applicantId || a.candidateId);
+            if (!candidate) continue;
+
+            htmlParts.push(`
+            <div class="card animate-fade-up" style="padding: 24px; display: flex; flex-direction: column; gap: 16px;">
+              <div class="flex" style="gap: 16px;">
+                <div style="width: 50px; height: 50px; border-radius: 50%; background: linear-gradient(135deg, var(--success), #22c55e); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 1.2rem;">${candidate.fullName ? candidate.fullName[0] : 'U'}</div>
+                <div>
+                  <h3 style="margin-bottom: 4px;">${window.App.profileLink("candidate", candidate.candidateId || candidate.applicantId, candidate.fullName || 'Người dùng')}</h3>
+                  <p style="color: var(--text-light); font-size: 0.9rem;">${candidate.title || "Ứng viên"}</p>
+                </div>
+              </div>
+              
+              <div style="padding: 12px; background: var(--bg-light); border-radius: 8px; font-size: 0.85rem;">
+                <div style="margin-bottom: 4px;"><strong class="text-primary">Vị trí:</strong> ${job ? job.title : "N/A"}</div>
+                <div><strong class="text-primary">Email:</strong> ${candidate.email}</div>
+              </div>
+
+              <div class="flex-between" style="margin-top: auto; padding-top: 16px; border-top: 1px solid var(--border-light);">
+                <span class="badge badge-success"><i class="fa-solid fa-check-double"></i> Đã trúng tuyển</span>
+                <div class="flex" style="gap: 8px;">
+                  <button class="btn btn-sm btn-ghost text-danger" onclick="cancelCollab('${a.id}')" title="Kết thúc hợp tác" aria-label="Kết thúc hợp tác"><i class="fa-solid fa-link-slash"></i></button>
+                </div>
+              </div>
+            </div>
+          `);
+          }
+          container.innerHTML = htmlParts.join("");
+        } catch (error) {
+          console.error(error);
+          container.innerHTML = '<p class="text-center text-danger">Lỗi khi tải dữ liệu ứng viên.</p>';
+        }
+      }
+
+      async function cancelCollab(appId) {
+        if (!confirm("Bạn có chắc chắn muốn hủy hợp tác với ứng viên này?")) return;
+        try {
+          await window.DB.updateApplication(appId, { status: "employment_ended" });
+          Toast.success("Đã cập nhật trạng thái kết thúc hợp tác.");
+          render();
+        } catch (error) {
+          Toast.error(error.message || "Không thể cập nhật trạng thái hợp tác.");
+        }
+      }
+      
+      window.cancelCollab = cancelCollab;
+      const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (c) => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+      })[c]);
+
+      async function renderConnections() {
+        const container = document.getElementById('connectedCandidates');
+        container.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:30px">Đang tải danh sách kết nối...</div>';
+        try {
+          const candidates = await window.DB.getConnectedCandidates();
+          if (!candidates.length) {
+            container.innerHTML = '<div class="empty-state" style="grid-column:1/-1;padding:40px"><div class="empty-icon"><i class="fa-solid fa-user-group"></i></div><h3>Chưa có ứng viên kết nối</h3><p>Các ứng viên chấp nhận lời mời sẽ xuất hiện ở đây.</p></div>';
+            return;
+          }
+          container.innerHTML = candidates.map((candidate) => {
+            const id = String(candidate.candidateId);
+            const name = candidate.fullName || 'Ứng viên';
+            return `<div class="card animate-fade-up" style="padding:24px;display:flex;flex-direction:column;gap:14px">
+              <div class="flex" style="gap:14px;align-items:center">
+                <div class="avatar" style="width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--primary-light);color:var(--primary);font-weight:700">${escapeHtml(name.slice(0, 1))}</div>
+                <div><h3 style="margin-bottom:4px">${window.App.profileLink('candidate', id, name)}</h3>
+                  <p style="color:var(--text-light);font-size:.9rem">${escapeHtml(candidate.title || 'Ứng viên')}</p></div>
+              </div>
+              <div style="font-size:.9rem;color:var(--text-light);flex:1">
+                <div><i class="fa-solid fa-envelope text-primary"></i> ${escapeHtml(candidate.email || 'Chưa cập nhật')}</div>
+                <div style="margin-top:6px"><i class="fa-solid fa-location-dot text-primary"></i> ${escapeHtml(candidate.location || 'Chưa cập nhật địa điểm')}</div>
+                ${candidate.jobTitle ? `<div style="margin-top:6px"><i class="fa-solid fa-briefcase text-primary"></i> Kết nối qua tin: ${escapeHtml(candidate.jobTitle)}</div>` : ''}
+              </div>
+              <div class="flex" style="gap:8px;flex-wrap:wrap;border-top:1px solid var(--border-light);padding-top:14px">
+                <a class="btn btn-sm btn-outline" href="candidate-profile.html?id=${encodeURIComponent(id)}"><i class="fa-regular fa-id-card"></i> Xem hồ sơ</a>
+                <button class="btn btn-sm btn-outline" onclick="window.App.openChat('${encodeURIComponent(id)}')"><i class="fa-regular fa-comment-dots"></i> Nhắn tin</button>
+                <button class="btn btn-sm btn-ghost text-danger" onclick="removeCandidateConnection('${encodeURIComponent(id)}')"><i class="fa-solid fa-link-slash"></i> Gỡ kết nối</button>
+              </div>
+            </div>`;
+          }).join('');
+        } catch (error) {
+          console.error('Không tải được ứng viên đã kết nối:', error);
+          container.innerHTML = '<p class="text-center text-danger" style="grid-column:1/-1">Không tải được danh sách kết nối.</p>';
+        }
+      }
+
+      window.removeCandidateConnection = async function(candidateId) {
+        if (!confirm('Gỡ kết nối với ứng viên này?')) return;
+        try {
+          await window.DB.removeCandidateConnection(candidateId);
+          Toast.success('Đã gỡ kết nối với ứng viên.');
+          await renderConnections();
+        } catch (error) {
+          Toast.error(error.message || 'Không thể gỡ kết nối.');
+        }
+      };
+
+      renderConnections();
+      render();
+    </script>
+  </body>
+</html>

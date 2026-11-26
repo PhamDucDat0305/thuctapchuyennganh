@@ -29,6 +29,7 @@ BEGIN
         id BIGINT IDENTITY(1,1) NOT NULL CONSTRAINT PK_candidate_cvs PRIMARY KEY,
         candidate_id BIGINT NOT NULL,
         title NVARCHAR(150) NOT NULL,
+        file_url NVARCHAR(500) NOT NULL,
         original_name NVARCHAR(255) NOT NULL,
         stored_name NVARCHAR(100) NOT NULL,
         mime_type NVARCHAR(100) NOT NULL,

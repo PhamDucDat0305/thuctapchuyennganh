@@ -6,6 +6,7 @@ const {
   closeSessionStore,
 } = require("./config/session");
 const healthRoutes = require("./routes/health.routes");
+const testRoutes = require("./routes/test.routes");
 const authRoutes = require("./routes/auth.routes");
 const meRoutes = require("./routes/me.routes");
 const jobsRoutes = require("./routes/jobs.routes");
@@ -28,47 +29,34 @@ const { notFound, errorHandler } = require("./middleware/errorHandler");
 
 const app = express();
 const frontendRoot = path.resolve(__dirname, "..", "..");
+const publicRoot = path.join(frontendRoot, "public");
 
 app.disable("x-powered-by");
 
-// Only expose known frontend directories. Do not mount the project root:
-// backend source/config, SQL, reports, docs, .env and .git must stay private.
-for (const directory of ["css", "js", "ico", "candidate", "employer", "admin"]) {
-  app.use(
-    `/${directory}`,
-    express.static(path.join(frontendRoot, directory), {
-      dotfiles: "deny",
-      fallthrough: true,
-      index: false,
-    }),
-  );
-}
+// Only public/ is exposed. Keep backend, SQL, docs, .env, private uploads,
+// reports and .git outside this directory.
+app.use(express.static(publicRoot, {
+  dotfiles: "deny",
+  fallthrough: true,
+  index: false,
+}));
 
-// Serve only known root-level HTML pages plus short, optional aliases. Keep
-// the existing *.html URLs working and avoid a catch-all SPA fallback so API
-// and unknown routes retain JSON 404 responses.
+// Preserve short aliases while the actual frontend files live under public/.
 const frontendPages = {
   "/": "index.html",
-  "/index.html": "index.html",
   "/about": "about.html",
-  "/about.html": "about.html",
   "/contact": "contact.html",
-  "/contact.html": "contact.html",
   "/auth": "auth.html",
-  "/auth.html": "auth.html",
   "/jobs": "job-list.html",
-  "/job-list.html": "job-list.html",
   "/job-list": "job-list.html",
   "/job-detail": "job-detail.html",
-  "/job-detail.html": "job-detail.html",
-  "/company-profile.html": "company-profile.html",
   "/favicon.ico": "ico/favicon.ico",
   "/browserconfig.xml": "ico/browserconfig.xml",
 };
 for (const [route, file] of Object.entries(frontendPages)) {
   app.get(route, (req, res, next) => {
     res.sendFile(
-      path.join(frontendRoot, file),
+      path.join(publicRoot, file),
       { dotfiles: "deny" },
       (error) => {
         if (error) next(error);
@@ -79,7 +67,10 @@ for (const [route, file] of Object.entries(frontendPages)) {
 
 app.use(express.json({ limit: "1mb" }));
 app.use("/api/health", healthRoutes);
-app.use(createSessionMiddleware());
+app.use("/api/test", testRoutes);
+const sessionMiddleware = createSessionMiddleware();
+app.use(sessionMiddleware);
+app.locals.sessionMiddleware = sessionMiddleware;
 
 app.use("/api/auth", authRoutes);
 app.use("/api/me", meRoutes);
@@ -99,8 +90,6 @@ app.use("/api/admin", adminRoutes);
 app.use("/api/job-reports", jobReportsRoutes);
 app.use("/api/employer/saved-candidates", employerSavedCandidatesRoutes);
 app.use("/api/candidate-content", candidateContentRoutes);
-
-// Các nhóm route nghiệp vụ khác (profile...) sẽ được thêm ở đây.
 
 app.use(notFound);
 app.use(errorHandler);

@@ -1,0 +1,44 @@
+<form id="login-form">
+  <label for="email">Email</label>
+  <input
+    id="email"
+    name="email"
+    type="email"
+    autocomplete="username"
+    required
+  />
+  <label for="password">Mật khẩu</label>
+  <input
+    id="password"
+    name="password"
+    type="password"
+    autocomplete="current-password"
+    required
+  />
+  <button id="submit-button" type="submit">Đăng nhập</button>
+</form>
+
+<script type="module">
+  import { Auth } from "./js/auth.js";
+
+  const form = document.getElementById("login-form");
+  const button = document.getElementById("submit-button");
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    button.disabled = true;
+    try {
+      const result = await Auth.login(
+        document.getElementById("email").value.trim(),
+        document.getElementById("password").value,
+      );
+      if (result.success) {
+        window.location.href = "index.html";
+        return;
+      }
+    } catch (error) {
+    } finally {
+      button.disabled = false;
+    }
+  });
+</script>

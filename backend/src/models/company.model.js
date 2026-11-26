@@ -1,0 +1,15 @@
+module.exports = (sequelize, DataTypes) => sequelize.define('Company', {
+  id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true, field: 'id' },
+  employerId: { type: DataTypes.BIGINT, allowNull: false, field: 'employer_id' },
+  name: { type: DataTypes.STRING(200), allowNull: false, field: 'name' },
+  description: { type: DataTypes.TEXT, allowNull: true, field: 'description' },
+  industry: { type: DataTypes.STRING(100), allowNull: true, field: 'industry' },
+  size: { type: DataTypes.STRING(50), allowNull: true, field: 'size' },
+  location: { type: DataTypes.STRING(200), allowNull: true, field: 'location' },
+  website: { type: DataTypes.STRING(255), allowNull: true, field: 'website' },
+  logoUrl: { type: DataTypes.STRING(500), allowNull: true, field: 'logo_url' },
+  logo: { type: DataTypes.STRING(500), allowNull: true, field: 'logo' },
+  adminStatus: { type: DataTypes.STRING(20), allowNull: false, field: 'admin_status' },
+  createdAt: { type: DataTypes.DATE, allowNull: false, field: 'created_at' },
+  updatedAt: { type: DataTypes.DATE, allowNull: false, field: 'updated_at' },
+}, { tableName: 'companies' });

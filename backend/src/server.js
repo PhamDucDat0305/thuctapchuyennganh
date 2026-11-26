@@ -1,17 +1,21 @@
 require('dotenv').config();
 
+const http = require('node:http');
 const app = require('./app');
-const { connectDatabase, closeDatabase } = require('./config/database');
+const { sequelize } = require('./models');
+const { createSocketServer } = require('./sockets');
 
 const PORT = Number(process.env.PORT) || 3000;
 
 async function start() {
   try {
-    await connectDatabase();
-    console.log('[db] Đã kết nối SQL Server');
+    await sequelize.authenticate();
+    console.log('[db] Đã kết nối SQL Server qua Sequelize');
   } catch (err) {
     console.error('[db] Không kết nối được SQL Server:', err.message);
-    console.error('     Kiểm tra .env, SQL Server, TCP/IP và quyền của tài khoản SQL.');
+    try { await sequelize.close(); } catch (closeError) {
+      console.error('[db] Lỗi khi đóng connection pool:', closeError.message);
+    }
     process.exitCode = 1;
     return;
   }
@@ -24,14 +28,17 @@ async function start() {
     try { await app.locals.closeSessionStore(); } catch (closeError) {
       console.error('[session] Lỗi khi đóng session store:', closeError.message);
     }
-    try { await closeDatabase(); } catch (closeError) {
+    try { await sequelize.close(); } catch (closeError) {
       console.error('[db] Lỗi khi đóng connection pool:', closeError.message);
     }
     process.exitCode = 1;
     return;
   }
 
-  const server = app.listen(PORT, () => {
+  const server = http.createServer(app);
+  const io = createSocketServer(server, app.locals.sessionMiddleware);
+  app.locals.io = io;
+  server.listen(PORT, () => {
     console.log(`[server] Đang chạy tại http://localhost:${PORT}`);
   });
 
@@ -40,11 +47,10 @@ async function start() {
     if (shuttingDown) return;
     shuttingDown = true;
     console.log(`[server] Nhận ${signal}, đang tắt...`);
-    server.close(async (err) => {
-      if (err) console.error('[server] Lỗi khi đóng HTTP server:', err.message);
+    io.close(async () => {
       try {
         await app.locals.closeSessionStore();
-        await closeDatabase();
+        await sequelize.close();
       } catch (closeError) {
         console.error('[db] Lỗi khi đóng connection pool:', closeError.message);
         process.exitCode = 1;

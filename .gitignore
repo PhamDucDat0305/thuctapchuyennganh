@@ -1,6 +1,6 @@
 node_modules/
 .env
 *.log
-/employer/uploads/companies/
-/uploads/companies/
+/public/employer/uploads/companies/
+/public/uploads/companies/
 /private_uploads/

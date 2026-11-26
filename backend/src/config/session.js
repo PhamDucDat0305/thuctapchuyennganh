@@ -1,6 +1,5 @@
 const session = require('express-session');
-const MSSQLStore = require('connect-mssql-v2');
-const { buildConfig } = require('./database');
+const SequelizeSessionStore = require('./sequelize-session-store');
 
 const SESSION_COOKIE_NAME = 'jv.sid';
 const IDLE_TIMEOUT_MS = 30 * 60 * 1000;
@@ -12,16 +11,8 @@ function createSessionMiddleware() {
     throw new Error('SESSION_SECRET thiếu hoặc quá ngắn trong file .env');
   }
 
-  // Store lưu phiên trong bảng dbo.sessions của SQL Server
-  // (phiên vẫn còn sau khi backend khởi động lại).
-  sessionStore = new MSSQLStore(buildConfig(), {
-    table: '[dbo].[sessions]',
-    ttl: IDLE_TIMEOUT_MS,
-    autoRemove: true,
-    autoRemoveInterval: 10 * 60 * 1000,
-    retries: 3,
-    retryDelay: 500,
-  });
+  // Store giữ nguyên bảng dbo.sessions và JSON session hiện có, dùng pool Sequelize.
+  sessionStore = new SequelizeSessionStore({ ttl: IDLE_TIMEOUT_MS });
   sessionStore.on('error', (err) => {
     console.error('[session] Lỗi session store:', err.message);
   });
@@ -44,17 +35,13 @@ function createSessionMiddleware() {
 
 async function connectSessionStore() {
   if (!sessionStore) throw new Error('Session store chưa được khởi tạo');
-  if (!sessionStore.databaseConnection.connected) {
-    await sessionStore.initializeDatabase();
-  }
+  await sessionStore.pruneExpired();
 }
 
 async function closeSessionStore() {
   const store = sessionStore;
   sessionStore = null;
-  if (store && store.databaseConnection) {
-    await store.databaseConnection.close();
-  }
+  store?.close();
 }
 
 module.exports = { createSessionMiddleware, connectSessionStore, closeSessionStore, SESSION_COOKIE_NAME };

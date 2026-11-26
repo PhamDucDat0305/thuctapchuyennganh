@@ -1,94 +1,18 @@
 const express = require('express');
-const { sql, getPool } = require('../config/database');
 const authenticate = require('../middleware/authenticate');
 const requireRole = require('../middleware/requireRole');
 const asyncHandler = require('../utils/asyncHandler');
+const controller = require('../controllers/users.controller');
 
 const router = express.Router();
 
 // Public profile contains only career details and is available only when the
 // candidate has opted into discovery. Contact details remain private.
-router.get('/:id/public', asyncHandler(async (req, res) => {
-  if (!/^[1-9]\d*$/.test(req.params.id)) return res.status(400).json({ error: 'Mã người dùng không hợp lệ' });
-  const result = await getPool().request()
-    .input('id', sql.BigInt, req.params.id)
-    .query(`
-      SELECT u.id, u.full_name AS fullName, u.role, u.search_status AS searchStatus,
-        p.title, p.location, p.experience, p.skills
-      FROM dbo.users AS u
-      LEFT JOIN dbo.candidate_profiles AS p ON p.user_id = u.id
-      WHERE u.id = @id AND u.role = N'candidate' AND u.status = N'active'
-        AND u.search_status = 1`);
-  if (!result.recordset.length) return res.status(404).json({ error: 'Không tìm thấy hồ sơ công khai' });
-  return res.json(mapUser(result.recordset[0]));
-}));
+router.get('/:id/public', asyncHandler(controller.getPublicCandidate));
 
 router.use(authenticate, requireRole('candidate', 'employer', 'admin'));
 
-function parseSkills(value) {
-  if (!value) return [];
-  try {
-    const parsed = JSON.parse(value);
-    return Array.isArray(parsed) ? parsed.filter((skill) => typeof skill === 'string') : [];
-  } catch (_) {
-    return value.split(',').map((skill) => skill.trim()).filter(Boolean);
-  }
-}
-
-function mapUser(row) {
-  if (!row) return null;
-  return {
-    id: Number(row.id), email: row.email, fullName: row.fullName,
-    role: row.role, phone: row.phone || '',
-    companyId: row.companyId == null ? null : Number(row.companyId), companyName: row.companyName || null,
-    searchStatus: row.searchStatus === undefined ? undefined : Boolean(row.searchStatus),
-    twoFactorEnabled: row.twoFactorEnabled === undefined ? undefined : Boolean(row.twoFactorEnabled),
-    title: row.title || '', location: row.location || '', experience: row.experience || '',
-    skills: parseSkills(row.skills),
-  };
-}
-
-router.get('/candidates', requireRole('employer', 'admin'), asyncHandler(async (_req, res) => {
-  const result = await getPool().request().query(`
-    SELECT u.id, u.full_name AS fullName, u.role,
-      u.search_status AS searchStatus, p.title, p.location, p.experience, p.skills
-    FROM dbo.users AS u
-    LEFT JOIN dbo.candidate_profiles AS p ON p.user_id = u.id
-    WHERE u.role = N'candidate' AND u.status = N'active' AND u.search_status = 1
-    ORDER BY u.full_name, u.id`);
-  return res.json(result.recordset.map(mapUser));
-}));
-
-router.get('/:id', asyncHandler(async (req, res) => {
-  if (!/^[1-9]\d*$/.test(req.params.id)) return res.status(400).json({ error: 'Mã người dùng không hợp lệ' });
-  const result = await getPool().request()
-    .input('id', sql.BigInt, req.params.id)
-    .input('requesterId', sql.BigInt, req.user.id)
-    .input('requesterRole', sql.NVarChar(20), req.user.role).query(`
-    DECLARE @isRelatedEmployer bit = CASE WHEN EXISTS (
-      SELECT 1 FROM dbo.applications AS a
-      INNER JOIN dbo.jobs AS j ON j.id = a.job_id
-      WHERE a.candidate_id = @id AND j.recruiter_id = @requesterId
-    ) THEN 1 ELSE 0 END;
-    SELECT u.id,
-      CASE WHEN u.id = @requesterId OR @requesterRole = N'admin' OR @isRelatedEmployer = 1 THEN u.email ELSE NULL END AS email,
-      u.full_name AS fullName, u.role,
-      CASE WHEN u.id = @requesterId OR @requesterRole = N'admin' OR @isRelatedEmployer = 1 THEN u.phone ELSE NULL END AS phone,
-      u.search_status AS searchStatus,
-      p.title, p.location, p.experience, p.skills,
-      c.id AS companyId, c.name AS companyName
-    FROM dbo.users AS u
-    LEFT JOIN dbo.candidate_profiles AS p ON p.user_id = u.id
-    LEFT JOIN dbo.companies AS c ON c.employer_id = u.id
-    WHERE u.id = @id AND u.status = N'active'
-      AND (
-        u.id = @requesterId
-        OR @requesterRole = N'admin'
-        OR (u.role = N'candidate' AND @requesterRole = N'employer'
-          AND (u.search_status = 1 OR @isRelatedEmployer = 1))
-      )`);
-  if (!result.recordset.length) return res.status(404).json({ error: 'Không tìm thấy người dùng' });
-  return res.json(mapUser(result.recordset[0]));
-}));
+router.get('/candidates', requireRole('employer', 'admin'), asyncHandler(controller.listCandidates));
+router.get('/:id', asyncHandler(controller.getById));
 
 module.exports = router;

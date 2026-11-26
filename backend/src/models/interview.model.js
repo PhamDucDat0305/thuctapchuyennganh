@@ -1,0 +1,17 @@
+module.exports = (sequelize, DataTypes) => sequelize.define('Interview', {
+  id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true, field: 'id' },
+  applicationId: { type: DataTypes.BIGINT, allowNull: false, field: 'application_id' },
+  roundNo: { type: DataTypes.TINYINT, allowNull: false, field: 'round_no' },
+  interviewType: { type: DataTypes.STRING(30), allowNull: true, field: 'interview_type' },
+  scheduledAt: { type: DataTypes.DATE, allowNull: false, field: 'scheduled_at' },
+  interviewDate: { type: DataTypes.DATEONLY, allowNull: true, field: 'interview_date' },
+  interviewTime: { type: DataTypes.TIME, allowNull: true, field: 'interview_time' },
+  location: { type: DataTypes.STRING(255), allowNull: true, field: 'location' },
+  meetingUrl: { type: DataTypes.STRING(500), allowNull: true, field: 'meeting_url' },
+  notes: { type: DataTypes.TEXT, allowNull: true, field: 'notes' },
+  result: { type: DataTypes.STRING(20), allowNull: false, field: 'result' },
+  status: { type: DataTypes.STRING(30), allowNull: false, field: 'status' },
+  createdBy: { type: DataTypes.BIGINT, allowNull: true, field: 'created_by' },
+  createdAt: { type: DataTypes.DATE, allowNull: false, field: 'created_at' },
+  updatedAt: { type: DataTypes.DATE, allowNull: false, field: 'updated_at' },
+}, { tableName: 'interviews' });

@@ -15,7 +15,7 @@ process.env.DB_ENCRYPT = 'false';
 process.env.DB_TRUST_CERT = 'true';
 
 const app = require('../src/app');
-const frontendRoot = path.resolve(__dirname, '..', '..');
+const frontendRoot = path.resolve(__dirname, '..', '..', 'public');
 
 function walkHtml(directory) {
   return fs.readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
@@ -65,7 +65,8 @@ async function main() {
     for (const page of [
       '/', '/index.html', '/about.html', '/about', '/contact.html', '/auth.html',
       '/jobs', '/job-list.html', '/job-detail.html',
-      '/candidate/dashboard.html', '/employer/dashboard.html',
+      '/backend-login-demo.html', '/candidate/dashboard.html',
+      '/employer/dashboard.html',
     ]) {
       await expectStatus(page, 200, /text\/html/);
       passed += 1;
@@ -83,13 +84,7 @@ async function main() {
     assert.deepEqual(await health.json(), { status: 'ok' });
     passed += 1;
 
-    const htmlFiles = [
-      ...fs.readdirSync(frontendRoot, { withFileTypes: true })
-        .filter((entry) => entry.isFile() && entry.name.toLowerCase().endsWith('.html'))
-        .map((entry) => path.join(frontendRoot, entry.name)),
-      ...walkHtml(path.join(frontendRoot, 'candidate')),
-      ...walkHtml(path.join(frontendRoot, 'employer')),
-    ];
+    const htmlFiles = walkHtml(frontendRoot);
     const assetReferences = new Set();
     for (const file of htmlFiles) {
       const relativePage = path.relative(frontendRoot, file);
